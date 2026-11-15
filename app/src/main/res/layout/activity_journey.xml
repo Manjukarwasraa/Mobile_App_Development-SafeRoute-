@@ -1,0 +1,627 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    activity_journey.xml — Journey Management screen layout.
+
+    SCREEN STRUCTURE (top to bottom):
+    ═══════════════════════════════════════════════════════
+    1. Toolbar          — red header with back arrow + title
+    2. ProgressBar      — spinner shown while Firestore loads
+    3. Status text      — "Loading…" / "No active journey" message
+    ───────────────────────────────────────────────────────
+    4. ACTIVE JOURNEY CARD  (visibility = GONE by default)
+       Shown when a journey is already active.
+       Contains: trip details + companion details + Complete button
+
+    5. JOURNEY FORM CARD    (visibility = GONE by default)
+       Shown when no journey is active.
+       Contains: trip fields + companion fields + Start button
+    ═══════════════════════════════════════════════════════
+
+    JourneyActivity controls which section is visible:
+      • Active journey found  → show section 4, hide section 5
+      • No active journey     → hide section 4, show section 5
+      • Loading               → hide both, show spinner
+
+    Consistent with existing screens:
+      • Same Toolbar style as ContactsActivity (red background, white title, back arrow)
+      • Same MaterialCardView style as Dashboard and Contacts screens
+      • Same TextInputLayout/OutlinedBox style as Login, Register, Contacts
+      • Same color references from colors.xml — no hardcoded hex values
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/colorBackground">
+
+    <!-- ═══════════════════════════════════════════════════════
+         SECTION 1 — TOOLBAR
+         Identical style to ContactsActivity toolbar.
+         ic_arrow_back is already in the drawable folder.
+         ═══════════════════════════════════════════════════════ -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/colorPrimary"
+        android:elevation="4dp"
+        app:title="@string/title_journey"
+        app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_arrow_back" />
+
+    <!-- ═══════════════════════════════════════════════════════
+         SECTION 2 — PROGRESS BAR
+         Shown while JourneyActivity checks Firestore for an
+         active journey. Hidden after the check completes.
+         ═══════════════════════════════════════════════════════ -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="24dp"
+        android:visibility="gone" />
+
+    <!-- ═══════════════════════════════════════════════════════
+         SECTION 3 — STATUS TEXT
+         Shows one of three messages depending on state:
+           "Loading journey status..."          (while loading)
+           "No active journey. Fill in..."      (no active journey)
+           Hidden entirely once a card is shown.
+         ═══════════════════════════════════════════════════════ -->
+    <TextView
+        android:id="@+id/tvJourneyStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/journey_loading"
+        android:textColor="@color/colorTextSecondary"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="8dp"
+        android:visibility="gone" />
+
+    <!-- The ScrollView wraps sections 4 and 5 so the full form
+         is reachable on small screens when the keyboard opens. -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="24dp">
+
+            <!-- ═══════════════════════════════════════════════════
+                 SECTION 4 — ACTIVE JOURNEY CARD
+                 Shown only when a journey with status="active" exists.
+                 Displays all saved journey details read-only, then
+                 offers the Mark as Completed button.
+                 Default visibility: GONE (controlled by JourneyActivity)
+                 ═══════════════════════════════════════════════════ -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardActiveJourney"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/colorSurface">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- Active journey header row: icon + title -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="16dp">
+
+                        <!-- Icon circle — reuses existing drawable -->
+                        <LinearLayout
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_icon_circle_red"
+                            android:gravity="center">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="🗺️"
+                                android:textSize="20sp" />
+                        </LinearLayout>
+
+                        <!-- "Active Journey" heading -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:text="@string/label_active_journey"
+                            android:textColor="@color/colorPrimary"
+                            android:textSize="17sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Divider under header -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginBottom="12dp"
+                        android:background="@color/colorDivider" />
+
+                    <!-- From -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="120dp"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_journey_from"
+                            android:textColor="@color/colorTextSecondary"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tvActiveFrom"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textColor="@color/colorTextPrimary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- To -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="120dp"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_journey_to"
+                            android:textColor="@color/colorTextSecondary"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tvActiveTo"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textColor="@color/colorTextPrimary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Travel mode -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="120dp"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_journey_mode"
+                            android:textColor="@color/colorTextSecondary"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tvActiveMode"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textColor="@color/colorTextPrimary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Expected arrival -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="120dp"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_journey_expected"
+                            android:textColor="@color/colorTextSecondary"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tvActiveExpected"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textColor="@color/colorTextPrimary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Started at -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="12dp">
+
+                        <TextView
+                            android:layout_width="120dp"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_journey_started"
+                            android:textColor="@color/colorTextSecondary"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tvActiveStartedAt"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textColor="@color/colorTextPrimary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Companion divider -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginBottom="12dp"
+                        android:background="@color/colorDivider" />
+
+                    <!-- Companion / Driver (shown if present, else shows "None") -->
+                    <TextView
+                        android:id="@+id/tvActiveCompanionHeader"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/journey_section_companion"
+                        android:textColor="@color/colorTextSecondary"
+                        android:textSize="12sp"
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.05" />
+
+                    <!-- "No companion details provided" — shown when all three fields are empty -->
+                    <TextView
+                        android:id="@+id/tvNoCompanion"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/label_no_companion"
+                        android:textColor="@color/colorTextSecondary"
+                        android:textSize="13sp"
+                        android:visibility="gone" />
+
+                    <!-- Companion name row -->
+                    <LinearLayout
+                        android:id="@+id/rowCompanionName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="120dp"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_companion"
+                            android:textColor="@color/colorTextSecondary"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tvActiveCompanionName"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textColor="@color/colorTextPrimary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Companion phone row -->
+                    <LinearLayout
+                        android:id="@+id/rowCompanionPhone"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="120dp"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_companion_phone"
+                            android:textColor="@color/colorTextSecondary"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tvActiveCompanionPhone"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textColor="@color/colorTextPrimary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Vehicle number row -->
+                    <LinearLayout
+                        android:id="@+id/rowVehicleNumber"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="16dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="120dp"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_vehicle"
+                            android:textColor="@color/colorTextSecondary"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tvActiveVehicleNumber"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textColor="@color/colorTextPrimary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Mark as Completed button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCompleteJourney"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:text="@string/btn_complete_journey"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:backgroundTint="@color/colorSuccess"
+                        android:textColor="@color/white"
+                        app:cornerRadius="8dp" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ═══════════════════════════════════════════════════
+                 SECTION 5 — JOURNEY FORM CARD
+                 Shown only when no active journey exists.
+                 Contains all input fields for starting a new journey.
+                 Default visibility: GONE (controlled by JourneyActivity)
+
+                 Sub-sections inside the card:
+                   5a. Trip Details  (required fields)
+                   5b. Companion / Driver Details  (optional fields)
+                   5c. Start Journey button
+                 ═══════════════════════════════════════════════════ -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardJourneyForm"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/colorSurface">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- ─────────────────────────────────────────
+                         SECTION 5a — TRIP DETAILS
+                         All four fields in this section are required.
+                         ───────────────────────────────────────── -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:text="@string/journey_section_trip"
+                        android:textColor="@color/colorTextPrimary"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <!-- Starting Location (required) -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layoutFrom"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:hint="@string/hint_journey_from">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/editFrom"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapSentences"
+                            android:imeOptions="actionNext"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Destination (required) -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layoutTo"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:hint="@string/hint_journey_to">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/editTo"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapSentences"
+                            android:imeOptions="actionNext"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Travel Mode (required) — exposed dropdown -->
+                    <!--
+                        TextInputLayout with exposedDropdownMenu style creates the
+                        dropdown that the user taps to pick Cab / Bus / etc.
+                        The AutoCompleteTextView inside it shows the selected option.
+                        JourneyActivity will populate the dropdown options in code.
+                    -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layoutTravelMode"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:hint="@string/hint_travel_mode">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/dropdownTravelMode"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="none"
+                            android:focusable="false" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Expected Arrival Time (required) — read-only, opens TimePickerDialog -->
+                    <!--
+                        This field is not editable by keyboard (inputType="none").
+                        JourneyActivity attaches a click listener that opens a
+                        TimePickerDialog. The selected time is then shown here.
+                    -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layoutExpectedArrival"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp"
+                        android:hint="@string/hint_expected_arrival"
+                        app:endIconMode="custom"
+                        app:endIconDrawable="@android:drawable/ic_menu_recent_history"
+                        app:endIconTint="@color/colorTextSecondary">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/editExpectedArrival"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="none"
+                            android:focusable="false"
+                            android:clickable="true"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- ─────────────────────────────────────────
+                         SECTION 5b — COMPANION / DRIVER DETAILS
+                         All three fields in this section are optional.
+                         The section header says "(Optional)" clearly.
+                         ───────────────────────────────────────── -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginBottom="14dp"
+                        android:background="@color/colorDivider" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:text="@string/journey_section_companion"
+                        android:textColor="@color/colorTextSecondary"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <!-- Companion / Driver Name (optional) -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layoutCompanionName"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:hint="@string/hint_companion_name">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/editCompanionName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textPersonName|textCapWords"
+                            android:imeOptions="actionNext"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Companion Phone Number (optional, validated if not empty) -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layoutCompanionPhone"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:hint="@string/hint_companion_phone">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/editCompanionPhone"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="phone"
+                            android:imeOptions="actionNext"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Vehicle Registration Number (optional, no format validation) -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layoutVehicleNumber"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="20dp"
+                        android:hint="@string/hint_vehicle_number">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/editVehicleNumber"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapCharacters"
+                            android:imeOptions="actionDone"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- ─────────────────────────────────────────
+                         SECTION 5c — START JOURNEY BUTTON
+                         ───────────────────────────────────────── -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartJourney"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:text="@string/btn_start_journey"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:backgroundTint="@color/colorPrimary"
+                        android:textColor="@color/white"
+                        app:cornerRadius="8dp" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

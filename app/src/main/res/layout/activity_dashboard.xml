@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SafeRoute Home Dashboard layout.
+
+    Structure:
+      1. Header strip  — app name, welcome message, logout button
+      2. SOS section   — large prominent emergency button + status hint
+      3. Nav cards     — Emergency Contacts | My Profile
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorBackground"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- ═══════════════════════════════════════════
+             HEADER STRIP
+             Dark red background with app name, greeting and logout
+             ═══════════════════════════════════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/colorPrimary"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingTop="48dp"
+            android:paddingBottom="28dp">
+
+            <!-- Row: app name + logout button -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/app_name"
+                    android:textColor="@color/white"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05"
+                    android:contentDescription="@string/cd_app_logo" />
+
+                <!-- Logout button — text style, top-right corner -->
+                <TextView
+                    android:id="@+id/tvLogout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/btn_logout"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"
+                    android:alpha="0.85"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="0dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="@string/btn_logout" />
+            </LinearLayout>
+
+            <!-- Greeting row: "Hello, [Name]" -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/dashboard_greeting"
+                    android:textColor="@color/white"
+                    android:textSize="20sp"
+                    android:alpha="0.9" />
+
+                <!-- Name loaded from Firestore at runtime -->
+                <TextView
+                    android:id="@+id/tvUserName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text=""
+                    android:textColor="@color/white"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Subtitle line -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/dashboard_subtitle"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                android:alpha="0.75" />
+
+        </LinearLayout>
+
+        <!-- ═══════════════════════════════════════════
+             SOS SECTION
+             Large circular button centred on screen
+             ═══════════════════════════════════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingTop="48dp"
+            android:paddingBottom="12dp">
+
+            <!--
+                The SOS button is a circular MaterialButton.
+                Size: 160dp × 160dp — large enough to tap under stress.
+                cornerRadius = half the size (80dp) makes it a perfect circle.
+                Elevation gives it depth so it looks tappable.
+            -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSos"
+                android:layout_width="160dp"
+                android:layout_height="160dp"
+                android:text="@string/btn_sos"
+                android:textSize="32sp"
+                android:textStyle="bold"
+                android:textColor="@color/white"
+                android:backgroundTint="@color/colorPrimary"
+                android:elevation="8dp"
+                android:stateListAnimator="@null"
+                app:cornerRadius="80dp"
+                android:contentDescription="@string/cd_sos_button" />
+
+            <!-- Status hint below the SOS button -->
+            <TextView
+                android:id="@+id/tvSosStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/sos_ready"
+                android:textColor="@color/colorTextSecondary"
+                android:textSize="13sp"
+                android:gravity="center"
+                android:paddingStart="32dp"
+                android:paddingEnd="32dp" />
+
+            <!-- Share-sheet notice — always visible, sets honest expectations -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/sos_share_note"
+                android:textColor="@color/colorWarning"
+                android:textSize="11sp"
+                android:gravity="center"
+                android:paddingStart="40dp"
+                android:paddingEnd="40dp" />
+
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:layout_marginTop="20dp"
+            android:background="@color/colorDivider" />
+
+        <!-- ═══════════════════════════════════════════
+             NAVIGATION CARDS
+             Emergency Contacts and Profile
+             ═══════════════════════════════════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="20dp"
+            android:paddingBottom="32dp">
+
+            <!-- Emergency Contacts card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardContacts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="3dp"
+                app:cardBackgroundColor="@color/colorSurface"
+                android:contentDescription="@string/cd_contacts_card">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="20dp">
+
+                    <!-- Icon background circle -->
+                    <LinearLayout
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="@drawable/bg_icon_circle_red"
+                        android:gravity="center">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="👥"
+                            android:textSize="22sp" />
+                    </LinearLayout>
+
+                    <!-- Card text -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/card_contacts_title"
+                            android:textColor="@color/colorTextPrimary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/card_contacts_subtitle"
+                            android:textColor="@color/colorTextSecondary"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <!-- Chevron arrow -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="›"
+                        android:textColor="@color/colorPrimary"
+                        android:textSize="28sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- My Profile card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardProfile"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="3dp"
+                app:cardBackgroundColor="@color/colorSurface"
+                android:contentDescription="@string/cd_profile_card">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="20dp">
+
+                    <!-- Icon background circle -->
+                    <LinearLayout
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="@drawable/bg_icon_circle_red"
+                        android:gravity="center">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="👤"
+                            android:textSize="22sp" />
+                    </LinearLayout>
+
+                    <!-- Card text -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/card_profile_title"
+                            android:textColor="@color/colorTextPrimary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/card_profile_subtitle"
+                            android:textColor="@color/colorTextSecondary"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <!-- Chevron arrow -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="›"
+                        android:textColor="@color/colorPrimary"
+                        android:textSize="28sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
+

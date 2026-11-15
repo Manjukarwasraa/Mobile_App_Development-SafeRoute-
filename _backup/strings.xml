@@ -1,0 +1,150 @@
+﻿<resources>
+    <string name="app_name">SafeRoute</string>
+
+    <!-- Registration screen -->
+    <string name="title_register">Create Account</string>
+    <string name="hint_full_name">Full Name</string>
+    <string name="hint_email">Email Address</string>
+    <string name="hint_password">Password</string>
+    <string name="hint_confirm_password">Confirm Password</string>
+    <string name="btn_register">Create Account</string>
+    <string name="label_have_account">Already have an account?</string>
+    <string name="btn_go_to_login">Sign In</string>
+
+    <!-- Login screen -->
+    <string name="title_login">Welcome Back</string>
+    <string name="btn_login">Sign In</string>
+    <string name="label_no_account">Don\'t have an account?</string>
+    <string name="btn_go_to_register">Create Account</string>
+    <string name="btn_forgot_password">Forgot Password?</string>
+
+    <!-- Validation errors -->
+    <string name="error_name_empty">Please enter your full name</string>
+    <string name="error_email_empty">Please enter your email address</string>
+    <string name="error_email_invalid">Please enter a valid email address</string>
+    <string name="error_password_empty">Please enter a password</string>
+    <string name="error_password_short">Password must be at least 6 characters</string>
+    <string name="error_password_mismatch">Passwords do not match</string>
+
+    <!-- Firebase / general messages -->
+    <string name="msg_register_success">Account created successfully</string>
+    <string name="msg_login_success">Welcome back</string>
+    <string name="msg_loading">Please waitâ€¦</string>
+    <string name="error_network">No internet connection. Please check your network.</string>
+    <string name="error_generic">Something went wrong. Please try again.</string>
+
+    <!-- Content descriptions for accessibility -->
+    <string name="cd_app_logo">SafeRoute logo</string>
+
+    <!-- Dashboard screen -->
+    <string name="dashboard_greeting">Hello,</string>
+    <string name="dashboard_subtitle">Your safety is our priority</string>
+    <string name="btn_sos">SOS</string>
+    <string name="sos_hint">Press to share your location with emergency contacts</string>
+    <string name="card_contacts_title">Emergency Contacts</string>
+    <string name="card_contacts_subtitle">Manage your trusted contacts</string>
+    <string name="card_profile_title">My Profile</string>
+    <string name="card_profile_subtitle">View and edit your account</string>
+    <string name="btn_logout">Logout</string>
+    <string name="cd_sos_button">SOS emergency button</string>
+    <string name="cd_contacts_card">Navigate to emergency contacts</string>
+    <string name="cd_profile_card">Navigate to profile</string>
+
+    <!-- SOS status messages (shown after SOS is tapped â€” Step 6) -->
+    <string name="sos_status_idle">Status: Ready</string>
+    <string name="sos_status_active">Getting your locationâ€¦</string>
+
+    <!-- Emergency Contacts screen -->
+    <string name="title_contacts">Emergency Contacts</string>
+    <string name="hint_contact_name">Contact Name</string>
+    <string name="hint_contact_phone">Phone Number</string>
+    <string name="btn_add_contact">Add Contact</string>
+    <string name="label_your_contacts">Your Emergency Contacts</string>
+    <string name="label_no_contacts">No emergency contacts added yet.\nTap above to add your first contact.</string>
+    <string name="btn_delete">Delete</string>
+    <string name="msg_contact_added">Contact added successfully</string>
+    <string name="msg_contact_deleted">Contact deleted</string>
+    <string name="error_contact_name_empty">Please enter the contact\'s name</string>
+    <string name="error_contact_phone_empty">Please enter a phone number</string>
+    <string name="error_contact_phone_invalid">Please enter a valid phone number</string>
+    <string name="error_loading_contacts">Failed to load contacts. Check your connection.</string>
+    <string name="confirm_delete_title">Delete Contact</string>
+    <string name="confirm_delete_message">Are you sure you want to remove %1$s from your emergency contacts?</string>
+    <string name="cd_delete_contact">Delete this contact</string>
+
+    <!-- Phone contacts picker -->
+    <string name="btn_choose_from_phone">Choose from Phone Contacts</string>
+    <string name="error_contact_no_phone">This contact has no phone number saved. Please enter one manually.</string>
+
+    <!-- SOS workflow â€” Step 6 -->
+    <string name="sos_dialog_title">Send Emergency Alert?</string>
+    <string name="sos_dialog_message">This will open the share screen so you can send your location to your emergency contacts.\n\nYou must complete the sharing action yourself.</string>
+    <string name="sos_dialog_confirm">Continue</string>
+    <string name="sos_dialog_cancel">Cancel</string>
+    <string name="sos_getting_location">Getting your locationâ€¦</string>
+    <string name="sos_loading_contacts">Loading your emergency contactsâ€¦</string>
+    <string name="sos_ready">Status: Ready</string>
+    <string name="sos_share_message">ðŸš¨ EMERGENCY ALERT ðŸš¨\n\nI need help! This is an automated alert from SafeRoute.\n\nSent by: %1$s\n\nMy current location:\n%2$s\n\nPlease contact me or the emergency services immediately.</string>
+    <string name="sos_no_contacts_title">No Emergency Contacts</string>
+    <string name="sos_no_contacts_message">You have not added any emergency contacts yet. Please add at least one contact before using SOS.</string>
+    <string name="sos_no_contacts_action">Add Contacts</string>
+    <string name="sos_permission_denied">Location permission is required for SOS. Please grant it in Settings.</string>
+    <string name="sos_location_failed">Could not get your location. Make sure GPS is turned on and try again.</string>
+    <string name="sos_share_title">Send Emergency Alert viaâ€¦</string>
+    <string name="sos_share_note">Select a messaging app to send the alert. The message has NOT been sent yet.</string>
+
+    <!-- Journey Management — Dashboard card -->
+    <string name="title_journey">My Journey</string>
+    <string name="card_journey_title">My Journey</string>
+    <string name="card_journey_subtitle">Track your current trip</string>
+    <string name="cd_journey_card">Navigate to journey tracking</string>
+
+    <!-- Journey form — section headers -->
+    <string name="journey_section_trip">Trip Details</string>
+    <string name="journey_section_companion">Driver / Travel Companion (Optional)</string>
+
+    <!-- Journey form — input hints -->
+    <string name="hint_journey_from">Starting Location</string>
+    <string name="hint_journey_to">Destination</string>
+    <string name="hint_travel_mode">Travel Mode</string>
+    <string name="hint_expected_arrival">Expected Arrival Time</string>
+    <string name="hint_companion_name">Companion / Driver Name (Optional)</string>
+    <string name="hint_companion_phone">Companion Phone Number (Optional)</string>
+    <string name="hint_vehicle_number">Vehicle Registration Number (Optional)</string>
+
+    <!-- Journey form — buttons -->
+    <string name="btn_start_journey">Start Journey</string>
+    <string name="btn_complete_journey">Mark as Completed</string>
+    <string name="btn_select_time">Select Time</string>
+
+    <!-- Active journey view — labels -->
+    <string name="label_active_journey">Active Journey</string>
+    <string name="label_journey_from">From:</string>
+    <string name="label_journey_to">To:</string>
+    <string name="label_journey_mode">Mode:</string>
+    <string name="label_journey_expected">Expected Arrival:</string>
+    <string name="label_journey_started">Started At:</string>
+    <string name="label_companion">Companion / Driver:</string>
+    <string name="label_companion_phone">Companion Phone:</string>
+    <string name="label_vehicle">Vehicle Number:</string>
+    <string name="label_no_companion">No companion details provided</string>
+
+    <!-- Journey status messages -->
+    <string name="journey_loading">Loading journey status...</string>
+    <string name="journey_none_active">No active journey. Fill in the details below to start one.</string>
+    <string name="journey_started_success">Journey started successfully</string>
+    <string name="journey_completed_success">Journey marked as completed</string>
+    <string name="journey_already_active">You already have an active journey. Complete it before starting a new one.</string>
+
+    <!-- Journey validation errors -->
+    <string name="error_journey_from_empty">Please enter your starting location</string>
+    <string name="error_journey_to_empty">Please enter your destination</string>
+    <string name="error_journey_mode_empty">Please select a travel mode</string>
+    <string name="error_journey_time_empty">Please select your expected arrival time</string>
+    <string name="error_companion_phone_invalid">Please enter a valid phone number for the companion, or leave it empty</string>
+
+    <!-- Journey Firestore error messages -->
+    <string name="error_journey_load_failed">Could not load journey status. Check your connection and try again.</string>
+    <string name="error_journey_save_failed">Could not save journey. Check your connection and try again.</string>
+    <string name="error_journey_complete_failed">Could not update journey status. Check your connection and try again.</string>
+</resources>

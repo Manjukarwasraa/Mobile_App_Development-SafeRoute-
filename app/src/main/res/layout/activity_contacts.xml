@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Emergency Contacts screen.
+
+    Layout structure:
+      - Toolbar (back arrow + title)
+      - Input card (name + phone + Add button)
+      - Section header + loading/empty state
+      - RecyclerView (scrollable contact list)
+
+    The input card stays fixed at the top while the list scrolls below it.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/colorBackground">
+
+    <!-- Toolbar with back arrow -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/colorPrimary"
+        android:elevation="4dp"
+        app:title="@string/title_contacts"
+        app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_arrow_back" />
+
+    <!-- Input card — pinned at top, does not scroll -->
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="@color/colorSurface">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Contact name field -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layoutContactName"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/hint_contact_name">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editContactName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textPersonName|textCapWords"
+                    android:imeOptions="actionNext"
+                    android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <Space android:layout_width="match_parent" android:layout_height="12dp" />
+
+            <!-- Phone number field -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layoutContactPhone"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/hint_contact_phone">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editContactPhone"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="phone"
+                    android:imeOptions="actionDone"
+                    android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <Space android:layout_width="match_parent" android:layout_height="14dp" />
+
+            <!-- Phone contacts picker button — outlined style, secondary action -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnChooseFromPhone"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="@string/btn_choose_from_phone"
+                android:textSize="14sp"
+                android:textColor="@color/colorPrimary"
+                app:strokeColor="@color/colorPrimary"
+                app:cornerRadius="8dp" />
+
+            <!-- OR divider between picker and manual entry -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="4dp">
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:background="@color/colorDivider" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="OR enter manually"
+                    android:textColor="@color/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:background="@color/colorDivider" />
+            </LinearLayout>
+
+            <Space android:layout_width="match_parent" android:layout_height="8dp" />
+
+            <!-- Add Contact button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAddContact"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="@string/btn_add_contact"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:backgroundTint="@color/colorPrimary"
+                android:textColor="@color/colorTextOnPrimary"
+                app:cornerRadius="8dp" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Section header row: label + progress bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/label_your_contacts"
+            android:textColor="@color/colorTextPrimary"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <!-- Shown while Firestore is loading -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <!-- Empty state — shown when the contacts list is empty -->
+    <TextView
+        android:id="@+id/tvEmptyState"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/label_no_contacts"
+        android:textColor="@color/colorTextSecondary"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="16dp"
+        android:visibility="gone" />
+
+    <!-- Contact list — fills remaining screen height -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerContacts"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp"
+        android:clipToPadding="false" />
+
+</LinearLayout>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Keep the originals — referenced by launcher icons -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- SafeRoute brand colours -->
+    <color name="colorPrimary">#C62828</color>       <!-- Deep red — main brand, SOS button -->
+    <color name="colorPrimaryDark">#8E0000</color>   <!-- Darker red — pressed states, status bar -->
+    <color name="colorAccent">#FF5252</color>        <!-- Bright red — highlights, icons -->
+
+    <!-- Backgrounds -->
+    <color name="colorBackground">#FAFAFA</color>    <!-- Near-white screen background -->
+    <color name="colorSurface">#FFFFFF</color>       <!-- Card and input surface -->
+
+    <!-- Text -->
+    <color name="colorTextPrimary">#1A237E</color>   <!-- Dark navy — headings -->
+    <color name="colorTextSecondary">#546E7A</color> <!-- Muted blue-grey — hints, labels -->
+    <color name="colorTextOnPrimary">#FFFFFF</color> <!-- White — text on red buttons -->
+
+    <!-- Status colours -->
+    <color name="colorSuccess">#2E7D32</color>       <!-- Green — success messages -->
+    <color name="colorError">#C62828</color>         <!-- Red — error messages (same as primary) -->
+    <color name="colorWarning">#F57F17</color>       <!-- Amber — warning states -->
+
+    <!-- UI elements -->
+    <color name="colorDivider">#E0E0E0</color>       <!-- Light grey lines and borders -->
+    <color name="colorInputBackground">#F5F5F5</color> <!-- Very light grey for input fields -->
+</resources>
