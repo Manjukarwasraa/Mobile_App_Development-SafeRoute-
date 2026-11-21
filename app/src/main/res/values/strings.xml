@@ -49,6 +49,16 @@
     <string name="cd_sos_button">SOS emergency button</string>
     <string name="cd_contacts_card">Navigate to emergency contacts</string>
     <string name="cd_profile_card">Navigate to profile</string>
+    <string name="title_profile">My Profile</string>
+    <string name="btn_edit_profile">Edit Profile</string>
+    <string name="btn_save_changes">Save Changes</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="profile_sign_in_required">Please sign in again to view your profile.</string>
+    <string name="profile_missing">Your profile record is missing. Complete your name and phone number, then save to create it.</string>
+    <string name="profile_missing_editable">Your profile record is missing. Complete your name and phone number, then save to create it.</string>
+    <string name="profile_load_failed">Could not load your profile. Check your connection and try again.</string>
+    <string name="profile_save_success">Profile updated successfully.</string>
+    <string name="profile_save_failed">Could not save your changes. Check your connection and try again.</string>
 
     <!-- SOS status messages (shown after SOS is tapped — Step 6) -->
     <string name="sos_status_idle">Status: Ready</string>
@@ -135,6 +145,54 @@
     <string name="journey_started_success">Journey started successfully</string>
     <string name="journey_completed_success">Journey marked as completed</string>
     <string name="journey_already_active">You already have an active journey. Complete it before starting a new one.</string>
+    <string name="btn_end_journey">End Journey</string>
+    <string name="journey_status_planned">Journey status: Planned</string>
+    <string name="journey_status_active">Journey status: Active</string>
+    <string name="journey_status_completed">Journey status: Completed</string>
+    <string name="journey_start_confirmation_title">Start Journey</string>
+    <string name="journey_start_confirmation_message">Start your journey to %1$s?</string>
+    <string name="journey_end_confirmation_message">Are you sure you want to end this journey?</string>
+    <string name="journey_update_in_progress">Updating journey...</string>
+
+    <!-- Current location (requested only while a journey is active) -->
+    <string name="current_location_heading">Current Location</string>
+    <string name="current_location_not_retrieved">Your current location has not been retrieved yet.</string>
+    <string name="location_retrieved">Current location retrieved.</string>
+    <string name="location_active_journey_only">Current location is available only during an active journey.</string>
+    <string name="btn_get_current_location">Get Current Location</string>
+    <string name="btn_open_in_maps">Open in Google Maps</string>
+    <string name="location_permission_title">Location permission</string>
+    <string name="location_permission_message">SafeRoute uses your location only when you tap Get Current Location during an active journey.</string>
+    <string name="location_permission_continue">Continue</string>
+    <string name="location_permission_denied">Location permission was not granted. Allow location access to retrieve your current position.</string>
+    <string name="location_services_disabled">Turn on Location in your phone settings, then try again.</string>
+    <string name="location_fetching">Getting your current location...</string>
+    <string name="location_unavailable">Could not get your location. Check that Location is on and try again.</string>
+    <string name="location_coordinates">Latitude: %1$s\nLongitude: %2$s</string>
+    <string name="location_maps_unavailable">No maps app is available to open this location.</string>
+    <string name="location_permission_alert_message">Location access lets SafeRoute add a current position to the alert you chose to share. If access is denied, you can still share using a previously retrieved location or without a location link.</string>
+    <string name="location_missing_for_alert">A current or previously retrieved location is unavailable. You can still share the alert without a location link.</string>
+    <string name="battery_information_unavailable">Battery information is not available on this device.</string>
+    <string name="low_battery_warning">Your battery is running low (%1$d%%). Your phone may switch off during your journey. You can share your current location with your emergency contacts.</string>
+    <string name="btn_share_emergency_alert">Share Emergency Alert</string>
+    <string name="btn_safety_check">Safety Check</string>
+    <string name="safety_check_question">Are you safe during your journey?</string>
+    <string name="safety_check_safe">I Am Safe</string>
+    <string name="safety_check_help">I Need Help</string>
+    <string name="safety_check_safe_message">Glad to know you are safe!</string>
+    <string name="low_battery_alert_message">Emergency Travel Alert!\n\nMy phone battery is critically low (%1$d%%) while I am travelling.\n\nJourney: %2$s to %3$s\n\n%4$s\n\nPlease contact me if you do not hear from me.</string>
+    <string name="safety_help_alert_message">EMERGENCY ALERT!\n\nI need help during my journey.\n\nJourney: %1$s to %2$s\n\n%3$s\n\nPlease contact me immediately.</string>
+    <string name="alert_current_location">My current location: %1$s</string>
+    <string name="alert_last_location">My last available location: %1$s</string>
+    <string name="alert_no_location">My current location could not be retrieved.</string>
+    <string name="alert_contacts_heading">\n\nEmergency contacts:\n%1$s</string>
+    <string name="alert_share_chooser_title">Share emergency alert</string>
+    <string name="btn_share_without_location">Share without location</string>
+    <string name="location_unavailable_title">Location unavailable</string>
+    <string name="location_last_used">Using your last available location.</string>
+    <string name="alert_sign_in_required">Please sign in again before sharing an alert.</string>
+    <string name="alert_no_sharing_app">No app is available to share this alert.</string>
+    <string name="alert_contacts_load_failed">Could not load your emergency contacts. Please try again.</string>
 
     <!-- Journey validation errors -->
     <string name="error_journey_from_empty">Please enter your starting location</string>
@@ -147,4 +205,17 @@
     <string name="error_journey_load_failed">Could not load journey status. Check your connection and try again.</string>
     <string name="error_journey_save_failed">Could not save journey. Check your connection and try again.</string>
     <string name="error_journey_complete_failed">Could not update journey status. Check your connection and try again.</string>
+
+    <!-- Profile screen -->
+    <string name="profile_personal_information">Personal information</string>
+    <string name="profile_name_missing_value">Name not set</string>
+    <string name="profile_phone_missing_value">Not provided</string>
+    <string name="profile_account">Account</string>
+    <string name="profile_emergency_contacts">Emergency Contacts</string>
+    <string name="profile_manage_contacts">Manage your trusted contacts</string>
+    <string name="profile_sign_out_section">Sign out</string>
+    <string name="profile_logout_title">Sign out of SafeRoute?</string>
+    <string name="profile_logout_message">You can sign in again at any time with your account.</string>
+    <string name="profile_logout_confirm">Sign Out</string>
 </resources>
+

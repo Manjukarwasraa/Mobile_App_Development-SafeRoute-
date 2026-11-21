@@ -26,4 +26,9 @@
     <!-- UI elements -->
     <color name="colorDivider">#E0E0E0</color>       <!-- Light grey lines and borders -->
     <color name="colorInputBackground">#F5F5F5</color> <!-- Very light grey for input fields -->
+
+    <!-- Profile screen palette -->
+    <color name="profileNavy">#17324D</color>
+    <color name="profileBlue">#3B78A5</color>
+    <color name="profileLightBlue">#DCEEFF</color>
 </resources>

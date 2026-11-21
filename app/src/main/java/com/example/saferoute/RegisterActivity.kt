@@ -1,7 +1,8 @@
-package com.example.saferoute
+﻿package com.example.saferoute
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -13,14 +14,15 @@ import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 
 /**
- * RegisterActivity — lets new users create a SafeRoute account.
+ * RegisterActivity â€” lets new users create a SafeRoute account.
  *
  * Flow:
  * 1. User fills name, email, password, confirm password.
  * 2. We validate all four fields locally before calling Firebase.
- * 3. Firebase Authentication creates the account (stores hashed password — we never see it).
+ * 3. Firebase Authentication creates the account (stores hashed password â€” we never see it).
  * 4. On success we save {name, email, createdAt} to Firestore under users/{uid}.
  * 5. Navigate to LoginActivity so the user can sign in.
  *
@@ -145,20 +147,26 @@ class RegisterActivity : AppCompatActivity() {
     /**
      * Calls Firebase Authentication to create the account.
      * On success, saves the user profile to Firestore.
-     * Passwords are handled entirely by Firebase — we never store them.
+     * Passwords are handled entirely by Firebase â€” we never store them.
      */
     private fun registerUser(name: String, email: String, password: String) {
         showLoading(true)
 
+        // A Firestore write can fail after Auth has already created the account.
+        // Allow a retry to reuse the still-authenticated account.
+        val signedInUser = firebaseAuth.currentUser
+        if (signedInUser != null && signedInUser.email.equals(email, ignoreCase = true)) {
+            saveUserProfileToFirestore(signedInUser.uid, name, email)
+            return
+        }
+
         firebaseAuth.createUserWithEmailAndPassword(email, password)
             .addOnSuccessListener { authResult ->
-                // Firebase account created — now save the profile to Firestore
                 val uid = authResult.user?.uid ?: run {
                     showLoading(false)
                     showError("Registration failed. Please try again.")
                     return@addOnSuccessListener
                 }
-
                 saveUserProfileToFirestore(uid, name, email)
             }
             .addOnFailureListener { exception ->
@@ -169,42 +177,47 @@ class RegisterActivity : AppCompatActivity() {
 
     /**
      * Saves {name, email, createdAt} to Firestore under users/{uid}.
-     * Only public profile data is stored — never passwords.
+     * Only public profile data is stored â€” never passwords.
      *
      * Firestore path: users / {uid}
      */
     private fun saveUserProfileToFirestore(uid: String, name: String, email: String) {
-        // Build the profile document — no password field here
-        val userProfile = hashMapOf(
-            "uid"       to uid,
-            "name"      to name,
-            "email"     to email,
-            "createdAt" to com.google.firebase.Timestamp.now()
-        )
-
-        firestore.collection("users")
-            .document(uid)
-            .set(userProfile)
-            .addOnSuccessListener {
-                showLoading(false)
-                // Show a brief success message then go to Login
-                Snackbar.make(
-                    btnRegister,
-                    getString(R.string.msg_register_success),
-                    Snackbar.LENGTH_SHORT
-                ).show()
-
-                // Small delay so the user can see the success message
-                btnRegister.postDelayed({ goToLogin() }, 1200)
+        val userDocument = firestore.collection("users").document(uid)
+        // Create only if absent; retries must preserve any existing user fields.
+        firestore.runTransaction { transaction ->
+            val existing = transaction.get(userDocument)
+            if (!existing.exists()) {
+                transaction.set(
+                    userDocument,
+                    mapOf(
+                        "uid" to uid,
+                        "name" to name,
+                        "email" to email,
+                        "phone" to "",
+                        "createdAt" to com.google.firebase.Timestamp.now()
+                    )
+                )
             }
-            .addOnFailureListener { exception ->
-                showLoading(false)
-                // Auth account was created but Firestore save failed.
-                // This is non-critical for login — the user can still sign in.
-                // Show a warning but still navigate to Login.
-                showError("Account created but profile save failed: ${exception.message}")
-                btnRegister.postDelayed({ goToLogin() }, 2000)
+            null
+        }.addOnSuccessListener {
+            showLoading(false)
+            Snackbar.make(btnRegister, getString(R.string.msg_register_success), Snackbar.LENGTH_SHORT).show()
+            btnRegister.postDelayed({ goToLogin() }, 1200)
+        }.addOnFailureListener { exception ->
+            showLoading(false)
+            val code = (exception as? FirebaseFirestoreException)?.code?.name ?: "NON_FIRESTORE"
+            Log.e("RegisterActivity", "Profile creation failed; Firebase error code=$code", exception)
+            val message = when ((exception as? FirebaseFirestoreException)?.code) {
+                FirebaseFirestoreException.Code.PERMISSION_DENIED ->
+                    "Account created, but Firestore denied profile creation. Check security rules and retry."
+                FirebaseFirestoreException.Code.UNAVAILABLE,
+                FirebaseFirestoreException.Code.DEADLINE_EXCEEDED ->
+                    "Account created, but the profile service is unavailable. Check the connection and retry."
+                else -> "Account created, but the profile could not be saved (Firebase error: $code). Retry."
             }
+            // Remain here so the user can retry; retry uses the signed-in Auth account above.
+            showError(message)
+        }
     }
 
     /**
@@ -250,3 +263,5 @@ class RegisterActivity : AppCompatActivity() {
         finish()
     }
 }
+
+

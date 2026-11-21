@@ -48,6 +48,7 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var tvSosStatus: TextView
     private lateinit var btnSos: MaterialButton
     private lateinit var cardContacts: MaterialCardView
+    private lateinit var cardJourney: MaterialCardView
     private lateinit var cardProfile: MaterialCardView
     private lateinit var tvLogout: TextView
 
@@ -84,6 +85,7 @@ class DashboardActivity : AppCompatActivity() {
         tvSosStatus  = findViewById(R.id.tvSosStatus)
         btnSos       = findViewById(R.id.btnSos)
         cardContacts = findViewById(R.id.cardContacts)
+        cardJourney = findViewById(R.id.cardJourney)
         cardProfile  = findViewById(R.id.cardProfile)
         tvLogout     = findViewById(R.id.tvLogout)
 
@@ -99,8 +101,13 @@ class DashboardActivity : AppCompatActivity() {
             startActivity(Intent(this, ContactsActivity::class.java))
         }
 
+        // Open the local journey setup form.
+        cardJourney.setOnClickListener {
+            startActivity(Intent(this, JourneyActivity::class.java))
+        }
+
         cardProfile.setOnClickListener {
-            Snackbar.make(cardProfile, "Profile — coming in a future step", Snackbar.LENGTH_SHORT).show()
+            startActivity(Intent(this, ProfileActivity::class.java))
         }
 
         // ── Logout ────────────────────────────────────────────────────────
