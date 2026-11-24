@@ -4,6 +4,9 @@
 
     <!-- Required for Firebase Authentication and Firestore -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <!-- Required for SOS location sharing (Step 6) -->
     <!-- COARSE: approximate location via WiFi/cell — no runtime prompt needed -->
@@ -68,6 +71,28 @@
             android:exported="false"
             android:theme="@style/Theme.SafeRoute"
             android:windowSoftInputMode="adjustResize" />
+
+        <receiver
+            android:name=".SafetyReminderReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <receiver
+            android:name=".SafetyBootReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Completed journey history -->
+        <activity
+            android:name=".JourneyHistoryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.SafeRoute" />
 
         <!-- User profile -->
         <activity

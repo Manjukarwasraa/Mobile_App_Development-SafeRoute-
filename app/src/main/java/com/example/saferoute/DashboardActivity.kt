@@ -49,6 +49,7 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var btnSos: MaterialButton
     private lateinit var cardContacts: MaterialCardView
     private lateinit var cardJourney: MaterialCardView
+    private lateinit var cardJourneyHistory: MaterialCardView
     private lateinit var cardProfile: MaterialCardView
     private lateinit var tvLogout: TextView
 
@@ -86,6 +87,7 @@ class DashboardActivity : AppCompatActivity() {
         btnSos       = findViewById(R.id.btnSos)
         cardContacts = findViewById(R.id.cardContacts)
         cardJourney = findViewById(R.id.cardJourney)
+        cardJourneyHistory = findViewById(R.id.cardJourneyHistory)
         cardProfile  = findViewById(R.id.cardProfile)
         tvLogout     = findViewById(R.id.tvLogout)
 
@@ -104,6 +106,10 @@ class DashboardActivity : AppCompatActivity() {
         // Open the local journey setup form.
         cardJourney.setOnClickListener {
             startActivity(Intent(this, JourneyActivity::class.java))
+        }
+
+        cardJourneyHistory.setOnClickListener {
+            startActivity(Intent(this, JourneyHistoryActivity::class.java))
         }
 
         cardProfile.setOnClickListener {
@@ -243,7 +249,11 @@ class DashboardActivity : AppCompatActivity() {
                 val contacts = snapshot.documents.mapNotNull { doc ->
                     val name  = doc.getString("name")  ?: return@mapNotNull null
                     val phone = doc.getString("phone") ?: return@mapNotNull null
-                    "$name — $phone"
+                    if (doc.getBoolean("isPrimary") == true) {
+                        getString(R.string.primary_contact_message_entry, name, phone)
+                    } else {
+                        "$name — $phone"
+                    }
                 }
 
                 if (contacts.isEmpty()) {
@@ -356,6 +366,7 @@ class DashboardActivity : AppCompatActivity() {
 
     /** Signs out and clears back stack back to Login. */
     private fun logout() {
+        firebaseAuth.currentUser?.uid?.let { SafetyReminderScheduler.cancelForUser(this, it) }
         firebaseAuth.signOut()
         val intent = Intent(this, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

@@ -125,9 +125,11 @@ class ContactsActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        adapter = ContactsAdapter(contactList) { contact ->
-            showDeleteConfirmation(contact)
-        }
+        adapter = ContactsAdapter(
+            contactList,
+            onDeleteClick = { contact -> showDeleteConfirmation(contact) },
+            onPrimaryClick = { contact -> setPrimaryContact(contact) }
+        )
         recyclerContacts.layoutManager = LinearLayoutManager(this)
         recyclerContacts.adapter = adapter
     }
@@ -204,7 +206,12 @@ class ContactsActivity : AppCompatActivity() {
                 val contacts = snapshot.documents.mapNotNull { doc ->
                     val name  = doc.getString("name")  ?: return@mapNotNull null
                     val phone = doc.getString("phone") ?: return@mapNotNull null
-                    Contact(documentId = doc.id, name = name, phone = phone)
+                    Contact(
+                        documentId = doc.id,
+                        name = name,
+                        phone = phone,
+                        isPrimary = doc.getBoolean("isPrimary") == true
+                    )
                 }
                 adapter.updateContacts(contacts)
                 updateEmptyState()
@@ -230,7 +237,7 @@ class ContactsActivity : AppCompatActivity() {
             editContactPhone.requestFocus()
             return false
         }
-        if (phone.replace(Regex("[^0-9]"), "").length < 7) {
+        if (!isValidIndianMobileNumber(phone)) {
             layoutContactPhone.error = getString(R.string.error_contact_phone_invalid)
             editContactPhone.requestFocus()
             return false
@@ -242,36 +249,101 @@ class ContactsActivity : AppCompatActivity() {
         val uid = firebaseAuth.currentUser?.uid ?: return
         showLoading(true)
         btnAddContact.isEnabled = false
+        val contactsRef = firestore.collection("users").document(uid).collection("contacts")
+        contactsRef.get()
+            .addOnSuccessListener { snapshot ->
+                val normalizedPhone = normalizeIndianMobileNumber(phone)
+                val duplicate = snapshot.documents.any { document ->
+                    normalizeIndianMobileNumber(document.getString("phone").orEmpty()) == normalizedPhone
+                }
+                if (duplicate) {
+                    showLoading(false)
+                    btnAddContact.isEnabled = true
+                    layoutContactPhone.error = getString(R.string.error_contact_duplicate)
+                    editContactPhone.requestFocus()
+                    return@addOnSuccessListener
+                }
 
-        val data = hashMapOf(
-            "name"    to name,
-            "phone"   to phone,
-            "addedAt" to Timestamp.now()
-        )
-
-        firestore.collection("users").document(uid)
-            .collection("contacts")
-            .add(data)
-            .addOnSuccessListener { docRef ->
-                showLoading(false)
-                btnAddContact.isEnabled = true
-
-                val newContact = Contact(documentId = docRef.id, name = name, phone = phone)
-                contactList.add(0, newContact)
-                adapter.notifyItemInserted(0)
-                recyclerContacts.scrollToPosition(0)
-                updateEmptyState()
-
-                editContactName.text?.clear()
-                editContactPhone.text?.clear()
-                editContactName.requestFocus()
-
-                showSnackbar(getString(R.string.msg_contact_added))
+                val data = hashMapOf(
+                    "name" to name,
+                    "phone" to phone,
+                    "addedAt" to Timestamp.now(),
+                    "isPrimary" to false
+                )
+                contactsRef.add(data)
+                    .addOnSuccessListener { docRef ->
+                        showLoading(false)
+                        btnAddContact.isEnabled = true
+                        val newContact = Contact(documentId = docRef.id, name = name, phone = phone)
+                        contactList.add(0, newContact)
+                        adapter.notifyItemInserted(0)
+                        recyclerContacts.scrollToPosition(0)
+                        updateEmptyState()
+                        editContactName.text?.clear()
+                        editContactPhone.text?.clear()
+                        editContactName.requestFocus()
+                        showSnackbar(getString(R.string.msg_contact_added))
+                    }
+                    .addOnFailureListener { e ->
+                        showLoading(false)
+                        btnAddContact.isEnabled = true
+                        showSnackbar("Failed to add contact: ${e.message}")
+                    }
             }
             .addOnFailureListener { e ->
                 showLoading(false)
                 btnAddContact.isEnabled = true
-                showSnackbar("Failed to add contact: ${e.message}")
+                showSnackbar("Failed to check for duplicate contacts: ${e.message}")
+            }
+    }
+
+    private fun isValidIndianMobileNumber(value: String): Boolean {
+        if (!value.matches(Regex("\\+?[0-9][0-9\\s()-]*"))) return false
+        val digits = value.filter { it.isDigit() }
+        val nationalNumber = when {
+            digits.length == 10 -> digits
+            digits.length == 12 && digits.startsWith("91") -> digits.drop(2)
+            else -> return false
+        }
+        return nationalNumber.firstOrNull() in '6'..'9'
+    }
+
+    private fun normalizeIndianMobileNumber(value: String): String {
+        val digits = value.filter { it.isDigit() }
+        return if (digits.length == 12 && digits.startsWith("91")) digits.drop(2) else digits
+    }
+
+    private fun setPrimaryContact(contact: Contact) {
+        val uid = firebaseAuth.currentUser?.uid ?: return
+        showLoading(true)
+        val contactsRef = firestore.collection("users").document(uid).collection("contacts")
+        contactsRef.get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.documents.none { it.id == contact.documentId }) {
+                    showLoading(false)
+                    loadContacts()
+                    showSnackbar(getString(R.string.error_primary_contact_missing))
+                    return@addOnSuccessListener
+                }
+                val batch = firestore.batch()
+                snapshot.documents.forEach { document ->
+                    batch.update(document.reference, "isPrimary", document.id == contact.documentId)
+                }
+                batch.commit()
+                    .addOnSuccessListener {
+                        showLoading(false)
+                        val updatedContacts = contactList.map { it.copy(isPrimary = it.documentId == contact.documentId) }
+                        adapter.updateContacts(updatedContacts)
+                        showSnackbar(getString(R.string.msg_primary_contact_updated, contact.name))
+                    }
+                    .addOnFailureListener { exception ->
+                        showLoading(false)
+                        showSnackbar(getString(R.string.error_primary_contact_update, exception.message.orEmpty()))
+                    }
+            }
+            .addOnFailureListener { exception ->
+                showLoading(false)
+                showSnackbar(getString(R.string.error_primary_contact_update, exception.message.orEmpty()))
             }
     }
 

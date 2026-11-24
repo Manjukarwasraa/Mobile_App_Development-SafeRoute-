@@ -18,7 +18,8 @@ import com.google.firebase.Timestamp
  *
  * Fields stored in Firestore (inside the document):
  *   from, to, travelMode, expectedArrival, status,
- *   companionName, companionPhone, vehicleNumber, startedAt, completedAt
+ *   companionName, companionPhone, vehicleNumber, startedAt, completedAt,
+ *   safetyCheckIntervalMinutes
  *
  * Fields NOT stored in Firestore:
  *   documentId — this is the Firestore document's own ID (doc.id), not a
@@ -174,5 +175,8 @@ data class Journey(
      * Firestore document. The document is never deleted — only updated.
      * This satisfies condition 4 of the approved requirements.
      */
-    val completedAt: Timestamp? = null
+    val completedAt: Timestamp? = null,
+
+    /** Reminder interval selected for safety check-ins, in minutes. */
+    val safetyCheckIntervalMinutes: Int = 15
 )

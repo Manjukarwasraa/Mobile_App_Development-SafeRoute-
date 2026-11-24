@@ -23,7 +23,8 @@ import com.google.android.material.button.MaterialButton
  */
 class ContactsAdapter(
     private val contacts: MutableList<Contact>,
-    private val onDeleteClick: (Contact) -> Unit
+    private val onDeleteClick: (Contact) -> Unit,
+    private val onPrimaryClick: (Contact) -> Unit
 ) : RecyclerView.Adapter<ContactsAdapter.ContactViewHolder>() {
 
     /**
@@ -34,6 +35,8 @@ class ContactsAdapter(
         val tvName: TextView = itemView.findViewById(R.id.tvContactName)
         val tvPhone: TextView = itemView.findViewById(R.id.tvContactPhone)
         val btnDelete: MaterialButton = itemView.findViewById(R.id.btnDeleteContact)
+        val tvPrimary: TextView = itemView.findViewById(R.id.tvPrimaryContact)
+        val btnPrimary: MaterialButton = itemView.findViewById(R.id.btnPrimaryContact)
     }
 
     // Called by RecyclerView when it needs a new row view
@@ -49,10 +52,15 @@ class ContactsAdapter(
 
         holder.tvName.text = contact.name
         holder.tvPhone.text = contact.phone
+        holder.tvPrimary.visibility = if (contact.isPrimary) View.VISIBLE else View.GONE
+        holder.btnPrimary.visibility = if (contact.isPrimary) View.GONE else View.VISIBLE
 
         // When Delete is tapped, pass this contact back to the Activity
         holder.btnDelete.setOnClickListener {
             onDeleteClick(contact)
+        }
+        holder.btnPrimary.setOnClickListener {
+            onPrimaryClick(contact)
         }
     }
 

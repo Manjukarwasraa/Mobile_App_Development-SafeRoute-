@@ -16,5 +16,6 @@ package com.example.saferoute
 data class Contact(
     val documentId: String = "",
     val name: String = "",
-    val phone: String = ""
+    val phone: String = "",
+    val isPrimary: Boolean = false
 )

@@ -279,6 +279,7 @@ class ProfileActivity : AppCompatActivity() {
             .setMessage(R.string.profile_logout_message)
             .setNegativeButton(R.string.btn_cancel, null)
             .setPositiveButton(R.string.profile_logout_confirm) { _, _ ->
+                auth.currentUser?.uid?.let { SafetyReminderScheduler.cancelForUser(this, it) }
                 auth.signOut()
                 startActivity(Intent(this, LoginActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

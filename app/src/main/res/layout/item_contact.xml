@@ -57,18 +57,51 @@
                 android:layout_marginTop="2dp"
                 android:textColor="@color/colorTextSecondary"
                 android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tvPrimaryContact"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_history_completed"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:text="@string/label_primary_contact"
+                android:textColor="@color/colorSuccess"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
         </LinearLayout>
 
-        <!-- Delete button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnDeleteContact"
-            style="@style/Widget.Material3.Button.TextButton"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/btn_delete"
-            android:textColor="@color/colorPrimary"
-            android:textSize="13sp"
-            android:contentDescription="@string/cd_delete_contact" />
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPrimaryContact"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="0dp"
+                android:text="@string/btn_make_primary"
+                android:textColor="@color/colorPrimary"
+                android:textSize="11sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDeleteContact"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="0dp"
+                android:text="@string/btn_delete"
+                android:textColor="@color/colorPrimary"
+                android:textSize="13sp"
+                android:contentDescription="@string/cd_delete_contact" />
+        </LinearLayout>
 
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
