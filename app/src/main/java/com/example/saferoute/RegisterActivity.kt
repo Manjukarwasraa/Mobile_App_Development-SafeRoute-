@@ -128,9 +128,14 @@ class RegisterActivity : AppCompatActivity() {
             return false
         }
 
-        // Firebase requires minimum 6 characters
-        if (password.length < 6) {
-            layoutPassword.error = getString(R.string.error_password_short)
+        if (password.length < 8 ||
+            password.none { it.isUpperCase() } ||
+            password.none { it.isLowerCase() } ||
+            password.none { it.isDigit() } ||
+            password.none { !it.isLetterOrDigit() }
+        ) {
+            layoutPassword.error =
+                "Use at least 8 characters, including uppercase and lowercase letters, a number, and a special character."
             editPassword.requestFocus()
             return false
         }
