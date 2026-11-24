@@ -359,5 +359,41 @@
     <string name="profile_logout_title">Sign out of SafeRoute?</string>
     <string name="profile_logout_message">You can sign in again at any time with your account.</string>
     <string name="profile_logout_confirm">Sign Out</string>
+
+    <!-- Expected Arrival Monitoring -->
+    <string name="journey_progress_arrival_label">🏁  Expected arrival</string>
+    <string name="journey_progress_arrival_remaining">%1$s remaining · %2$s</string>
+    <string name="journey_progress_arrival_unavailable">Expected arrival unavailable</string>
+    <string name="journey_progress_arrival_arrived">Arrival confirmed</string>
+    <string name="journey_progress_arrival_journey_completed">Journey completed</string>
+    <string name="journey_progress_arrival_pending">Awaiting arrival confirmation · %1$s remaining</string>
+    <string name="journey_progress_arrival_missed">Arrival confirmation missed</string>
+    <string name="journey_progress_arrival_cancelled">Arrival monitoring cancelled</string>
+    <string name="journey_progress_arrival_waiting">Monitoring expected arrival</string>
+    <string name="arrival_notification_channel_description">Notifications for expected arrival checks and missed arrival alerts</string>
+    <string name="arrival_notification_title">Expected arrival check</string>
+    <string name="arrival_notification_message">Your expected arrival time has been reached. Have you arrived safely? Please respond within 60 seconds.</string>
+    <string name="arrival_action_yes">YES, I HAVE ARRIVED.</string>
+    <string name="arrival_action_not_yet">NOT YET.</string>
+    <string name="arrival_prompt_dialog_title">Have you arrived?</string>
+    <string name="arrival_prompt_dialog_message">Your expected arrival time for your journey to %1$s has been reached. Please confirm within 60 seconds.</string>
+    <string name="arrival_confirmed_message">Arrival confirmed. Journey marked as completed.</string>
+    <string name="arrival_confirm_failed">Could not confirm arrival. Please try again.</string>
+    <string name="arrival_confirm_too_late">The 60-second confirmation window has passed.</string>
+    <string name="arrival_missed_notification_title">Missed arrival check</string>
+    <string name="arrival_missed_notification_message">No arrival confirmation was received within 60 seconds. Tap to share an emergency alert manually.</string>
+    <string name="arrival_action_share">Share Emergency Alert</string>
+    <string name="arrival_missed_share_prompt">No arrival confirmation was received within 60 seconds. SafeRoute recorded this missed arrival. You can prepare an emergency message with your latest available location to share manually.</string>
+    <string name="arrival_missed_share_message">EMERGENCY ALERT!\n\nI did not confirm my expected arrival during my journey.\n\nJourney: %1$s to %2$s\n\n%3$s\n\nPlease contact me immediately.</string>
+    <string name="arrival_extension_title">Extend Expected Arrival</string>
+    <string name="arrival_extension_prompt">Not arrived yet? Choose how many minutes to extend your expected arrival time:</string>
+    <string name="arrival_extend_10">Extend by 10 minutes</string>
+    <string name="arrival_extend_15">Extend by 15 minutes</string>
+    <string name="arrival_extend_30">Extend by 30 minutes</string>
+    <string name="arrival_custom_hint">Custom minutes</string>
+    <string name="arrival_extend_custom">Extend by custom minutes</string>
+    <string name="arrival_custom_invalid">Please enter a valid number of minutes (greater than 0)</string>
+    <string name="arrival_extension_saved">Expected arrival extended by %1$d minutes.</string>
+    <string name="arrival_extension_failed">Could not extend expected arrival time. The 60-second confirmation window may have expired.</string>
 </resources>
 

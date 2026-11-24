@@ -366,7 +366,10 @@ class DashboardActivity : AppCompatActivity() {
 
     /** Signs out and clears back stack back to Login. */
     private fun logout() {
-        firebaseAuth.currentUser?.uid?.let { SafetyReminderScheduler.cancelForUser(this, it) }
+        firebaseAuth.currentUser?.uid?.let {
+            SafetyReminderScheduler.cancelForUser(this, it)
+            ExpectedArrivalScheduler.cancelForUser(this, it)
+        }
         firebaseAuth.signOut()
         val intent = Intent(this, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

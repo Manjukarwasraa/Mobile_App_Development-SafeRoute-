@@ -16,12 +16,24 @@ import androidx.core.app.NotificationManagerCompat
 internal object ArrivalNotifications {
     private const val CHANNEL_ID = "expected_arrival_monitoring"
     private const val CHANNEL_NAME = "Expected arrival checks"
+    private const val NOTIFICATION_TAG = "expected_arrival"
     private const val TAG = "ArrivalNotifications"
 
     fun showPrompt(context: Context, state: ExpectedArrivalScheduler.State) {
         createChannel(context)
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
         val notificationId = state.token.hashCode()
+        val promptContentIntent = PendingIntent.getActivity(
+            context,
+            state.token.hashCode() xor 303,
+            Intent(context, JourneyActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra(JourneyActivity.EXTRA_JOURNEY_ID, state.journeyId)
+                putExtra(ExpectedArrivalScheduler.EXTRA_TOKEN, state.token)
+                data = Uri.parse("saferoute://arrival/prompt/${state.uid}/${state.journeyId}/${state.token}")
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
         val yesIntent = receiverPendingIntent(context, state, ExpectedArrivalScheduler.ACTION_CONFIRM)
         val extensionIntent = PendingIntent.getActivity(
             context,
@@ -43,8 +55,13 @@ internal object ArrivalNotifications {
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(false)
             .setOnlyAlertOnce(true)
+            .setContentIntent(promptContentIntent)
             .addAction(R.drawable.ic_notification_safety, context.getString(R.string.arrival_action_yes), yesIntent)
             .addAction(R.drawable.ic_notification_safety, context.getString(R.string.arrival_action_not_yet), extensionIntent)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+                .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
+        }
         post(context, notificationId, builder.build())
     }
 
@@ -56,7 +73,7 @@ internal object ArrivalNotifications {
             state.token.hashCode() xor 202,
             Intent(context, JourneyActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                putExtra(JourneyActivity.EXTRA_ARRIVAL_MISSED_JOURNEY_ID, state.journeyId)
+                putExtra(JourneyActivity.EXTRA_JOURNEY_ID, state.journeyId)
                 data = Uri.parse("saferoute://arrival/missed/${state.uid}/${state.journeyId}/${state.token}")
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -70,18 +87,23 @@ internal object ArrivalNotifications {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
             .setContentIntent(openIntent)
             .addAction(R.drawable.ic_notification_safety, context.getString(R.string.arrival_action_share), openIntent)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+                .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
+        }
         post(context, state.token.hashCode(), builder.build())
     }
 
     fun cancel(context: Context, token: String) {
-        NotificationManagerCompat.from(context).cancel(token.hashCode())
+        NotificationManagerCompat.from(context).cancel(NOTIFICATION_TAG, token.hashCode())
     }
 
     private fun post(context: Context, notificationId: Int, notification: android.app.Notification) {
         try {
-            NotificationManagerCompat.from(context).notify(notificationId, notification)
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_TAG, notificationId, notification)
         } catch (exception: SecurityException) {
             Log.w(TAG, "Notification permission is unavailable", exception)
         }

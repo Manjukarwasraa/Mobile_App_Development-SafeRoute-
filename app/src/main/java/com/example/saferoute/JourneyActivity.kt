@@ -112,6 +112,11 @@ class JourneyActivity : AppCompatActivity() {
     private var readinessDialog: AlertDialog? = null
     private var isCheckingReadiness = false
     private var pendingArrivalEmergencyJourneyId: String? = null
+    private var pendingArrivalPromptJourneyId: String? = null
+    private var arrivalPromptDialogShowing = false
+    private var arrivalPromptDialog: AlertDialog? = null
+    private var arrivalMissedDialogShowing = false
+    private var shownMissedArrivalToken: String? = null
 
     private val progressHandler = Handler(Looper.getMainLooper())
     private val progressTicker = object : Runnable {
@@ -213,6 +218,7 @@ class JourneyActivity : AppCompatActivity() {
             initialCheckInId?.let { checkInId -> initialJourneyId?.let { journeyId -> checkInId to journeyId } }
         } else null
         pendingArrivalEmergencyJourneyId = intent.getStringExtra(EXTRA_ARRIVAL_MISSED_JOURNEY_ID)
+        pendingArrivalPromptJourneyId = intent.getStringExtra(EXTRA_ARRIVAL_PROMPT_JOURNEY_ID)
 
         findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
             .setNavigationOnClickListener { finish() }
@@ -291,8 +297,36 @@ class JourneyActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         isActivityResumed = true
-        ExpectedArrivalEvents.register { uid, journeyId ->
-            if (firebaseAuth.currentUser?.uid == uid && currentJourney?.documentId == journeyId) loadLatestJourney()
+        ExpectedArrivalEvents.register { event ->
+            if (firebaseAuth.currentUser?.uid != event.uid) return@register
+            when (event.type) {
+                ExpectedArrivalEvents.EventType.PROMPT -> {
+                    if (currentJourney?.documentId == event.journeyId && currentJourney?.status == "active") {
+                        showArrivalConfirmationDialog(event.uid, event.journeyId, event.token)
+                    } else {
+                        pendingArrivalPromptJourneyId = event.journeyId
+                        loadLatestJourney()
+                    }
+                }
+                ExpectedArrivalEvents.EventType.MISSED -> {
+                    arrivalPromptDialog?.dismiss()
+                    if (currentJourney?.documentId == event.journeyId && currentJourney?.status == "active") {
+                        pendingArrivalEmergencyJourneyId = null
+                        shownMissedArrivalToken = event.token
+                        refreshJourneyProgress()
+                        showArrivalMissedSharePrompt()
+                    } else {
+                        pendingArrivalEmergencyJourneyId = event.journeyId
+                        loadLatestJourney()
+                    }
+                }
+                ExpectedArrivalEvents.EventType.CONFIRMED -> {
+                    arrivalPromptDialog?.dismiss()
+                    if (currentJourney?.documentId == event.journeyId) {
+                        loadLatestJourney()
+                    }
+                }
+            }
         }
         if (firebaseAuth.currentUser?.uid?.let { ExpectedArrivalScheduler.consumeRefresh(this, it) } == true) {
             loadLatestJourney()
@@ -312,6 +346,7 @@ class JourneyActivity : AppCompatActivity() {
         }
         SafetyReminderScheduler.restore(this)
         firebaseAuth.currentUser?.uid?.let { uid ->
+            ExpectedArrivalScheduler.restoreForUser(this, uid)
             SafetyReminderScheduler.pendingEmergency(this, uid)?.let { state ->
                 pendingEmergencyCheck = state.emergencyCheckInId to state.journeyId
             }
@@ -321,6 +356,7 @@ class JourneyActivity : AppCompatActivity() {
         }
         openPendingSafetyCheck()
         openPendingEmergency()
+        openPendingArrivalCheck()
         startJourneyProgressUpdates()
         syncBatteryMonitoring()
         pendingReadinessJourney?.let { journey ->
@@ -341,6 +377,7 @@ class JourneyActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         pendingArrivalEmergencyJourneyId = intent.getStringExtra(EXTRA_ARRIVAL_MISSED_JOURNEY_ID)
+        pendingArrivalPromptJourneyId = intent.getStringExtra(EXTRA_ARRIVAL_PROMPT_JOURNEY_ID)
         if (intent.getBooleanExtra(EXTRA_REFRESH_JOURNEY, false)) loadLatestJourney()
         val checkInId = intent.getStringExtra(EXTRA_CHECK_IN_ID)
         val journeyId = intent.getStringExtra(EXTRA_JOURNEY_ID)
@@ -352,6 +389,9 @@ class JourneyActivity : AppCompatActivity() {
                 pendingSafetyCheck = checkInId to journeyId
                 openPendingSafetyCheck()
             }
+        }
+        if (pendingArrivalEmergencyJourneyId != null || pendingArrivalPromptJourneyId != null) {
+            openPendingArrivalCheck()
         }
     }
 
@@ -394,7 +434,10 @@ class JourneyActivity : AppCompatActivity() {
                 progressBar.visibility = android.view.View.GONE
                 currentJourney = selectedJourney
                 if (selectedJourney == null) {
-                    firebaseAuth.currentUser?.uid?.let { SafetyReminderScheduler.cancelForUser(this, it) }
+                    firebaseAuth.currentUser?.uid?.let {
+                        SafetyReminderScheduler.cancelForUser(this, it)
+                        ExpectedArrivalScheduler.cancelForUser(this, it)
+                    }
                     showJourneyForm()
                 } else {
                     showJourney(selectedJourney)
@@ -522,7 +565,11 @@ class JourneyActivity : AppCompatActivity() {
             }
         } else if (uid != null) {
             SafetyReminderScheduler.cancelForUser(this, uid)
-            if (journey.status == "completed") ExpectedArrivalScheduler.cancelForJourney(this, uid, journey.documentId)
+            if (journey.status == "completed") {
+                ExpectedArrivalScheduler.cancelForJourney(this, uid, journey.documentId)
+            } else {
+                ExpectedArrivalScheduler.cancelForUser(this, uid)
+            }
         }
         journeyFormCard.visibility =
             if (journey.status == "completed") android.view.View.VISIBLE else android.view.View.GONE
@@ -592,9 +639,8 @@ class JourneyActivity : AppCompatActivity() {
             else -> journeyActionButton.visibility = android.view.View.GONE
         }
         syncBatteryMonitoring()
-        if (journey.status == "active" && pendingArrivalEmergencyJourneyId == journey.documentId) {
-            pendingArrivalEmergencyJourneyId = null
-            showArrivalMissedSharePrompt()
+        if (journey.status == "active") {
+            openPendingArrivalCheck()
         }
     }
 
@@ -618,17 +664,18 @@ class JourneyActivity : AppCompatActivity() {
                 formatTimestamp(Timestamp(Date(expectedAt)))
             )
         } else getString(R.string.journey_progress_arrival_unavailable)
+        val effectiveArrivalStatus = arrivalState?.status ?: journey.arrivalConfirmationStatus
         arrivalStatus.text = when {
-            journey.status == "completed" && arrivalState?.status == "arrived" -> getString(R.string.journey_progress_arrival_arrived)
+            journey.status == "completed" && effectiveArrivalStatus == "arrived" -> getString(R.string.journey_progress_arrival_arrived)
             journey.status == "completed" -> getString(R.string.journey_progress_arrival_journey_completed)
             arrivalState?.status == "pending" -> getString(
                 R.string.journey_progress_arrival_pending,
                 formatCountdown((arrivalState.deadlineAt - System.currentTimeMillis()).coerceAtLeast(0L))
             )
-            arrivalState?.status == "missed" -> getString(R.string.journey_progress_arrival_missed)
-            arrivalState?.status == "arrived" -> getString(R.string.journey_progress_arrival_arrived)
-            arrivalState?.status == "cancelled" -> getString(R.string.journey_progress_arrival_cancelled)
-            arrivalState?.status == "scheduled" -> getString(R.string.journey_progress_arrival_waiting)
+            effectiveArrivalStatus == "missed" -> getString(R.string.journey_progress_arrival_missed)
+            effectiveArrivalStatus == "arrived" -> getString(R.string.journey_progress_arrival_arrived)
+            effectiveArrivalStatus == "cancelled" -> getString(R.string.journey_progress_arrival_cancelled)
+            effectiveArrivalStatus == "scheduled" || effectiveArrivalStatus == "extended" -> getString(R.string.journey_progress_arrival_waiting)
             else -> getString(R.string.journey_progress_arrival_waiting)
         }
         val startedAtMillis = journey.startedAt?.toDate()?.time
@@ -1179,15 +1226,138 @@ class JourneyActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    private fun openPendingArrivalCheck() {
+        val journey = currentJourney?.takeIf { it.status == "active" } ?: return
+        val uid = firebaseAuth.currentUser?.uid ?: return
+        val state = ExpectedArrivalScheduler.currentState(this)
+            ?.takeIf { it.uid == uid && it.journeyId == journey.documentId }
+
+        if (pendingArrivalEmergencyJourneyId == journey.documentId) {
+            pendingArrivalEmergencyJourneyId = null
+            if (state?.status == "missed") shownMissedArrivalToken = state.token
+            showArrivalMissedSharePrompt()
+            return
+        }
+
+        if (state == null) {
+            pendingArrivalPromptJourneyId = null
+            return
+        }
+
+        when (state.status) {
+            "pending" -> {
+                pendingArrivalPromptJourneyId = null
+                if (System.currentTimeMillis() >= state.deadlineAt) {
+                    ExpectedArrivalScheduler.handleTimeout(this, uid, journey.documentId, state.token)
+                } else {
+                    showArrivalConfirmationDialog(uid, journey.documentId, state.token)
+                }
+            }
+            "missed" -> {
+                pendingArrivalPromptJourneyId = null
+                if (shownMissedArrivalToken != state.token) {
+                    shownMissedArrivalToken = state.token
+                    showArrivalMissedSharePrompt()
+                }
+            }
+            else -> {
+                pendingArrivalPromptJourneyId = null
+            }
+        }
+    }
+
+    private fun showArrivalConfirmationDialog(uid: String, journeyId: String, token: String) {
+        if (arrivalPromptDialogShowing || isFinishing || isDestroyed) return
+        val journey = currentJourney?.takeIf { it.status == "active" && it.documentId == journeyId } ?: return
+        val state = ExpectedArrivalScheduler.currentState(this)
+            ?.takeIf { it.uid == uid && it.journeyId == journeyId && it.token == token && it.status == "pending" }
+            ?: return
+        if (System.currentTimeMillis() >= state.deadlineAt) {
+            ExpectedArrivalScheduler.handleTimeout(this, uid, journeyId, token)
+            return
+        }
+
+        val countdown = TextView(this).apply {
+            setPadding(48, 16, 48, 8)
+            textSize = 15f
+        }
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.arrival_prompt_dialog_title))
+            .setMessage(getString(R.string.arrival_prompt_dialog_message, journey.to))
+            .setView(countdown)
+            .setPositiveButton(getString(R.string.arrival_action_yes), null)
+            .setNegativeButton(getString(R.string.arrival_action_not_yet), null)
+            .create()
+        dialog.setCancelable(false)
+        dialog.setCanceledOnTouchOutside(false)
+        dialog.setOnShowListener {
+            val timer = object : CountDownTimer((state.deadlineAt - System.currentTimeMillis()).coerceAtLeast(0L), 1000L) {
+                override fun onTick(millisUntilFinished: Long) {
+                    countdown.text = getString(R.string.safety_check_countdown, (millisUntilFinished + 999L) / 1000L)
+                }
+
+                override fun onFinish() {
+                    dialog.dismiss()
+                    if (isActivityResumed) {
+                        ExpectedArrivalScheduler.handleTimeout(this@JourneyActivity, uid, journeyId, token)
+                    }
+                }
+            }.start()
+
+            dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener {
+                timer.cancel()
+                dialog.dismiss()
+                ExpectedArrivalScheduler.confirmArrival(this, uid, journeyId, token) { confirmed ->
+                    if (isFinishing || isDestroyed) return@confirmArrival
+                    if (confirmed) {
+                        Toast.makeText(this, getString(R.string.arrival_confirmed_message), Toast.LENGTH_LONG).show()
+                        loadLatestJourney()
+                    } else {
+                        Snackbar.make(journeyActionButton, getString(R.string.arrival_confirm_failed), Snackbar.LENGTH_LONG).show()
+                    }
+                }
+            }
+            dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setOnClickListener {
+                timer.cancel()
+                dialog.dismiss()
+                startActivity(Intent(this, ArrivalExtensionActivity::class.java).apply {
+                    putExtra(ExpectedArrivalScheduler.EXTRA_UID, uid)
+                    putExtra(ExpectedArrivalScheduler.EXTRA_JOURNEY_ID, journeyId)
+                    putExtra(ExpectedArrivalScheduler.EXTRA_TOKEN, token)
+                })
+            }
+            dialog.setOnDismissListener {
+                timer.cancel()
+                arrivalPromptDialogShowing = false
+                if (arrivalPromptDialog === dialog) arrivalPromptDialog = null
+            }
+        }
+        arrivalPromptDialog = dialog
+        arrivalPromptDialogShowing = true
+        dialog.show()
+        try {
+            RingtoneManager.getRingtone(
+                this,
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            )?.play()
+        } catch (exception: RuntimeException) {
+            Log.w(TAG, "Could not play the expected arrival sound", exception)
+        }
+    }
+
     private fun showArrivalMissedSharePrompt() {
-        MaterialAlertDialogBuilder(this)
+        if (arrivalMissedDialogShowing || isFinishing || isDestroyed) return
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(getString(R.string.arrival_missed_notification_title))
             .setMessage(getString(R.string.arrival_missed_share_prompt))
             .setNegativeButton(getString(R.string.btn_cancel), null)
             .setPositiveButton(getString(R.string.arrival_action_share)) { _, _ ->
                 beginEmergencyShare(AlertType.ARRIVAL_MISSED)
             }
-            .show()
+            .create()
+        dialog.setOnDismissListener { arrivalMissedDialogShowing = false }
+        arrivalMissedDialogShowing = true
+        dialog.show()
     }
 
     private fun showResumeSafetyMonitoringDialog() {
@@ -1996,6 +2166,12 @@ class JourneyActivity : AppCompatActivity() {
                         journey.documentId,
                         journey.safetyCheckIntervalMinutes
                     )
+                    ExpectedArrivalScheduler.ensureScheduled(
+                        this,
+                        userId,
+                        journey.documentId,
+                        journey.expectedArrival?.toDate()?.time
+                    )
                 }
                 if (newStatus == "completed") {
                     ExpectedArrivalScheduler.cancelForJourney(this, userId, journey.documentId)
@@ -2197,6 +2373,7 @@ class JourneyActivity : AppCompatActivity() {
         const val EXTRA_JOURNEY_ID = "extra_safety_journey_id"
         const val EXTRA_EMERGENCY_ALERT = "safety_emergency_alert"
         const val EXTRA_ARRIVAL_MISSED_JOURNEY_ID = "expected_arrival_missed_journey_id"
+        const val EXTRA_ARRIVAL_PROMPT_JOURNEY_ID = "expected_arrival_prompt_journey_id"
         const val EXTRA_REFRESH_JOURNEY = "refresh_journey_after_arrival_action"
         private const val TAG = "JourneyActivity"
         const val DEFAULT_SAFETY_CHECK_INTERVAL_MINUTES = 15

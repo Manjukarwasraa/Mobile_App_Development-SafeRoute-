@@ -226,6 +226,8 @@ class JourneyHistoryActivity : AppCompatActivity() {
                                     journeyRef.delete()
                                         .addOnSuccessListener {
                                             if (FirebaseAuth.getInstance().currentUser?.uid != uid) return@addOnSuccessListener
+                                            ExpectedArrivalScheduler.cancelForJourney(this, uid, journey.documentId)
+                                            SafetyReminderScheduler.cancelForJourney(this, uid, journey.documentId)
                                             deleteButton.isEnabled = false
                                             journeyList.removeAllViews()
                                             loadJourneyHistory()

@@ -44,7 +44,7 @@ class ArrivalExtensionActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btnExtend30Minutes).setOnClickListener { extendBy(30) }
         findViewById<MaterialButton>(R.id.btnExtendCustom).setOnClickListener {
             val minutes = customMinutes.text?.toString()?.trim()?.toIntOrNull()
-            if (minutes == null || minutes <= 0) {
+            if (minutes == null || minutes <= 0 || minutes > MAX_CUSTOM_MINUTES) {
                 customLayout.error = getString(R.string.arrival_custom_invalid)
             } else {
                 customLayout.error = null
@@ -53,7 +53,27 @@ class ArrivalExtensionActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        val state = ExpectedArrivalScheduler.currentState(this)
+        if (state == null || state.uid != uid || state.journeyId != journeyId || state.token != token) {
+            finish()
+            return
+        }
+        if (state.status == "pending" && System.currentTimeMillis() >= state.deadlineAt) {
+            ExpectedArrivalScheduler.handleTimeout(this, uid, journeyId, token)
+            message.text = getString(R.string.arrival_extension_failed)
+            message.visibility = android.view.View.VISIBLE
+            setExtensionButtonsEnabled(false)
+        } else if (state.status != "pending") {
+            message.text = getString(R.string.arrival_extension_failed)
+            message.visibility = android.view.View.VISIBLE
+            setExtensionButtonsEnabled(false)
+        }
+    }
+
     private fun extendBy(minutes: Int) {
+        message.visibility = android.view.View.GONE
         setBusy(true)
         ExpectedArrivalScheduler.extend(this, uid, journeyId, token, minutes) { updated ->
             if (isFinishing || isDestroyed) return@extend
@@ -67,15 +87,24 @@ class ArrivalExtensionActivity : AppCompatActivity() {
                 finish()
             } else {
                 message.text = getString(R.string.arrival_extension_failed)
+                message.visibility = android.view.View.VISIBLE
             }
         }
     }
 
     private fun setBusy(busy: Boolean) {
         progress.visibility = if (busy) android.view.View.VISIBLE else android.view.View.GONE
-        findViewById<MaterialButton>(R.id.btnExtend10Minutes).isEnabled = !busy
-        findViewById<MaterialButton>(R.id.btnExtend15Minutes).isEnabled = !busy
-        findViewById<MaterialButton>(R.id.btnExtend30Minutes).isEnabled = !busy
-        findViewById<MaterialButton>(R.id.btnExtendCustom).isEnabled = !busy
+        setExtensionButtonsEnabled(!busy)
+    }
+
+    private fun setExtensionButtonsEnabled(enabled: Boolean) {
+        findViewById<MaterialButton>(R.id.btnExtend10Minutes).isEnabled = enabled
+        findViewById<MaterialButton>(R.id.btnExtend15Minutes).isEnabled = enabled
+        findViewById<MaterialButton>(R.id.btnExtend30Minutes).isEnabled = enabled
+        findViewById<MaterialButton>(R.id.btnExtendCustom).isEnabled = enabled
+    }
+
+    companion object {
+        private const val MAX_CUSTOM_MINUTES = 10_080
     }
 }

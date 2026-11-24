@@ -6,16 +6,25 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import java.util.Date
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.abs
 
 /** Independent AlarmManager state for expected-arrival confirmations. */
 internal object ExpectedArrivalScheduler {
     private const val PREFS = "expected_arrival_monitoring"
     private const val TAG = "ExpectedArrivalScheduler"
     private const val TIMEOUT_MS = 60_000L
+    private val stateLock = Any()
 
     internal data class State(
         val uid: String,
@@ -26,154 +35,301 @@ internal object ExpectedArrivalScheduler {
         val deadlineAt: Long
     )
 
-    fun currentState(context: Context): State? = readState(context)
+    fun currentState(context: Context): State? = synchronized(stateLock) { readState(context) }
 
     fun ensureScheduled(context: Context, uid: String, journeyId: String, expectedAt: Long?) {
         if (uid.isBlank() || journeyId.isBlank() || expectedAt == null || expectedAt <= 0L) return
-        val current = readState(context)
-        if (current?.uid == uid && current.journeyId == journeyId && current.expectedAt == expectedAt &&
-            current.status in listOf("scheduled", "pending", "missed", "arrived")) {
-            restore(context)
-            return
+        synchronized(stateLock) {
+            val current = readState(context)
+            if (current?.uid == uid && current.journeyId == journeyId &&
+                current.status in listOf("scheduled", "pending", "missed", "arrived")
+            ) {
+                val keepExisting = current.status != "scheduled" ||
+                    abs(current.expectedAt - expectedAt) <= 1000L ||
+                    current.expectedAt > expectedAt
+                if (keepExisting) {
+                    restoreLocked(context, current)
+                    return
+                }
+            }
+            current?.let {
+                cancelAlarm(context, it, ACTION_ARRIVAL)
+                cancelAlarm(context, it, ACTION_TIMEOUT)
+                ArrivalNotifications.cancel(context, it.token)
+            }
+            val next = State(uid, journeyId, expectedAt, UUID.randomUUID().toString(), "scheduled", 0L)
+            saveState(context, next)
+            schedule(context, next, ACTION_ARRIVAL, expectedAt)
         }
-        current?.let { cancelAlarm(context, it, ACTION_ARRIVAL); cancelAlarm(context, it, ACTION_TIMEOUT); ArrivalNotifications.cancel(context, it.token) }
-        val next = State(uid, journeyId, expectedAt, UUID.randomUUID().toString(), "scheduled", 0L)
-        saveState(context, next)
-        schedule(context, next, ACTION_ARRIVAL, expectedAt)
     }
 
     fun cancelForJourney(context: Context, uid: String, journeyId: String) {
-        val state = readState(context) ?: return
-        if (state.uid != uid || state.journeyId != journeyId) return
-        cancelAlarm(context, state, ACTION_ARRIVAL)
-        cancelAlarm(context, state, ACTION_TIMEOUT)
-        ArrivalNotifications.cancel(context, state.token)
-        if (state.status != "arrived") saveState(context, state.copy(status = "cancelled", deadlineAt = 0L))
+        synchronized(stateLock) {
+            val state = readState(context) ?: return
+            if (state.uid != uid || state.journeyId != journeyId) return
+            cancelAlarm(context, state, ACTION_ARRIVAL)
+            cancelAlarm(context, state, ACTION_TIMEOUT)
+            ArrivalNotifications.cancel(context, state.token)
+            if (state.status != "arrived") saveState(context, state.copy(status = "cancelled", deadlineAt = 0L))
+        }
     }
 
     fun cancelForUser(context: Context, uid: String) {
-        val state = readState(context) ?: return
-        if (state.uid != uid) return
-        cancelAlarm(context, state, ACTION_ARRIVAL)
-        cancelAlarm(context, state, ACTION_TIMEOUT)
-        ArrivalNotifications.cancel(context, state.token)
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+        synchronized(stateLock) {
+            val state = readState(context) ?: return
+            if (state.uid != uid) return
+            cancelAlarm(context, state, ACTION_ARRIVAL)
+            cancelAlarm(context, state, ACTION_TIMEOUT)
+            ArrivalNotifications.cancel(context, state.token)
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit()
+        }
     }
 
     fun restore(context: Context) {
-        val state = readState(context) ?: return
+        val signedInUid = runCatching { FirebaseAuth.getInstance().currentUser?.uid }.getOrNull()
+        val stateToTimeout: State? = synchronized(stateLock) {
+            val state = readState(context) ?: return
+            if (signedInUid != state.uid) return
+            restoreLocked(context, state)
+        }
+        if (stateToTimeout != null) {
+            handleTimeout(context, stateToTimeout.uid, stateToTimeout.journeyId, stateToTimeout.token)
+        }
+    }
+
+    fun restoreForUser(context: Context, uid: String) {
+        if (uid.isBlank()) return
+        val stateToTimeout: State? = synchronized(stateLock) {
+            val state = readState(context) ?: return
+            if (state.uid != uid) return
+            restoreLocked(context, state)
+        }
+        if (stateToTimeout != null) {
+            handleTimeout(context, stateToTimeout.uid, stateToTimeout.journeyId, stateToTimeout.token)
+        }
+    }
+
+    private fun restoreLocked(context: Context, state: State): State? {
         when (state.status) {
             "scheduled" -> schedule(context, state, ACTION_ARRIVAL, state.expectedAt)
             "pending" -> {
-                if (System.currentTimeMillis() >= state.deadlineAt) handleTimeout(context, state.uid, state.journeyId, state.token)
-                else {
+                if (System.currentTimeMillis() >= state.deadlineAt) {
+                    return state
+                } else {
                     schedule(context, state, ACTION_TIMEOUT, state.deadlineAt)
                     ArrivalNotifications.showPrompt(context, state)
                 }
             }
-            "missed" -> ArrivalNotifications.showMissed(context, state)
+            "missed" -> {
+                if (!ExpectedArrivalEvents.hasVisibleListener()) {
+                    ArrivalNotifications.showMissed(context, state)
+                }
+            }
         }
+        return null
     }
 
     fun handleArrival(context: Context, uid: String, journeyId: String, token: String) {
-        val state = readState(context) ?: return
-        if (state.uid != uid || state.journeyId != journeyId || state.token != token || state.status != "scheduled") return
-        if (System.currentTimeMillis() < state.expectedAt) {
-            schedule(context, state, ACTION_ARRIVAL, state.expectedAt)
-            return
+        val signedInUid = runCatching { FirebaseAuth.getInstance().currentUser?.uid }.getOrNull()
+        val pending: State = synchronized(stateLock) {
+            val state = readState(context) ?: return
+            if (signedInUid != null && signedInUid != uid) return
+            if (state.uid != uid || state.journeyId != journeyId || state.token != token || state.status != "scheduled") return
+            if (System.currentTimeMillis() < state.expectedAt) {
+                schedule(context, state, ACTION_ARRIVAL, state.expectedAt)
+                return
+            }
+            val next = state.copy(status = "pending", deadlineAt = System.currentTimeMillis() + TIMEOUT_MS)
+            saveState(context, next)
+            schedule(context, next, ACTION_TIMEOUT, next.deadlineAt)
+            next
         }
-        val pending = state.copy(status = "pending", deadlineAt = System.currentTimeMillis() + TIMEOUT_MS)
-        saveState(context, pending)
-        schedule(context, pending, ACTION_TIMEOUT, pending.deadlineAt)
-        recordEvent(context, pending, "expected_arrival_reached", "prompted", "${token}_reached")
-        updateJourneyArrivalFields(uid, journeyId, mapOf(
-            "arrivalConfirmationStatus" to "pending",
-            "arrivalPromptedAt" to FieldValue.serverTimestamp()
-        ))
+        recordEvent(pending, "expected_arrival_reached", "prompted", "${token}_reached")
+        updateJourneyArrivalFields(
+            uid,
+            journeyId,
+            mapOf(
+                "arrivalConfirmationStatus" to "pending",
+                "arrivalPromptedAt" to FieldValue.serverTimestamp()
+            )
+        )
         ArrivalNotifications.showPrompt(context, pending)
+        ExpectedArrivalEvents.dispatchPrompt(uid, journeyId, pending.token)
     }
 
     fun handleTimeout(context: Context, uid: String, journeyId: String, token: String) {
-        val state = readState(context) ?: return
-        if (state.uid != uid || state.journeyId != journeyId || state.token != token || state.status != "pending") return
-        if (System.currentTimeMillis() < state.deadlineAt) {
-            schedule(context, state, ACTION_TIMEOUT, state.deadlineAt)
-            return
+        val signedInUid = runCatching { FirebaseAuth.getInstance().currentUser?.uid }.getOrNull()
+        val missed: State = synchronized(stateLock) {
+            val state = readState(context) ?: return
+            if (signedInUid != null && signedInUid != uid) return
+            if (state.uid != uid || state.journeyId != journeyId || state.token != token || state.status != "pending") return
+            if (System.currentTimeMillis() < state.deadlineAt) {
+                schedule(context, state, ACTION_TIMEOUT, state.deadlineAt)
+                return
+            }
+            cancelAlarm(context, state, ACTION_TIMEOUT)
+            val next = state.copy(status = "missed")
+            saveState(context, next)
+            next
         }
-        val missed = state.copy(status = "missed")
-        saveState(context, missed)
-        recordEvent(context, missed, "arrival_confirmation_missed", "missed", "${token}_missed")
-        updateJourneyArrivalFields(uid, journeyId, mapOf(
-            "arrivalConfirmationStatus" to "missed",
-            "arrivalMissedAt" to FieldValue.serverTimestamp()
-        ))
-        ArrivalNotifications.showMissed(context, missed)
+        recordEvent(missed, "arrival_confirmation_missed", "missed", "${token}_missed")
+        updateJourneyArrivalFields(
+            uid,
+            journeyId,
+            mapOf(
+                "arrivalConfirmationStatus" to "missed",
+                "arrivalMissedAt" to FieldValue.serverTimestamp()
+            )
+        )
+        ArrivalNotifications.cancel(context, token)
+        if (!ExpectedArrivalEvents.dispatchMissed(uid, journeyId, token)) {
+            ArrivalNotifications.showMissed(context, missed)
+        }
+        setRefreshPending(context, uid)
     }
 
-    fun confirmArrival(context: Context, uid: String, journeyId: String, token: String) {
-        val state = readState(context) ?: return
-        if (state.uid != uid || state.journeyId != journeyId || state.token != token || state.status !in listOf("pending", "missed")) return
+    fun confirmArrival(
+        context: Context,
+        uid: String,
+        journeyId: String,
+        token: String,
+        onComplete: ((Boolean) -> Unit)? = null
+    ) {
+        val arrived: State = synchronized(stateLock) {
+            val state = readState(context) ?: run {
+                onComplete?.invoke(false)
+                return
+            }
+            if (state.uid != uid || state.journeyId != journeyId || state.token != token ||
+                state.status !in listOf("pending", "missed")
+            ) {
+                onComplete?.invoke(false)
+                return
+            }
+            cancelAlarm(context, state, ACTION_ARRIVAL)
+            cancelAlarm(context, state, ACTION_TIMEOUT)
+            ArrivalNotifications.cancel(context, token)
+            val next = state.copy(status = "arrived", deadlineAt = 0L)
+            saveState(context, next)
+            next
+        }
+
+        SafetyReminderScheduler.cancelForJourney(context, uid, journeyId)
+        recordEvent(arrived, "arrival_confirmation_received", "yes", "${token}_confirmed")
+        setRefreshPending(context, uid)
+        ExpectedArrivalEvents.dispatchConfirmed(uid, journeyId, token)
+
         val journeyRef = FirebaseFirestore.getInstance().collection("users").document(uid)
             .collection("journeys").document(journeyId)
+        val completionUpdates = mapOf(
+            "status" to "completed",
+            "completedAt" to FieldValue.serverTimestamp(),
+            "arrivalConfirmationStatus" to "arrived",
+            "arrivalConfirmedAt" to FieldValue.serverTimestamp()
+        )
         FirebaseFirestore.getInstance().runTransaction { transaction ->
             val journey = transaction.get(journeyRef)
             if (!journey.exists()) throw IllegalStateException("Journey no longer exists")
             val status = journey.getString("status")
             if (status == "completed") return@runTransaction false
             if (status != "active") throw IllegalStateException("Journey is no longer active")
-            transaction.update(journeyRef, mapOf(
-                "status" to "completed",
-                "completedAt" to FieldValue.serverTimestamp(),
-                "arrivalConfirmationStatus" to "arrived",
-                "arrivalConfirmedAt" to FieldValue.serverTimestamp()
-            ))
+            transaction.update(journeyRef, completionUpdates)
             true
-        }.addOnSuccessListener { completed ->
-            cancelAlarm(context, state, ACTION_TIMEOUT)
-            ArrivalNotifications.cancel(context, token)
-            if (completed) {
-                val arrived = state.copy(status = "arrived", deadlineAt = 0L)
-                saveState(context, arrived)
-                recordEvent(context, arrived, "arrival_confirmation_received", "yes", "${token}_confirmed")
-                SafetyReminderScheduler.cancelForJourney(context, uid, journeyId)
-            } else {
-                saveState(context, state.copy(status = "cancelled", deadlineAt = 0L))
-            }
-            setRefreshPending(context, uid)
-            ExpectedArrivalEvents.dispatch(uid, journeyId)
+        }.addOnSuccessListener {
+            onComplete?.invoke(true)
         }.addOnFailureListener { exception ->
-            Log.e(TAG, "Arrival confirmation could not be saved", exception)
-            ArrivalNotifications.showPrompt(context, state)
+            val code = (exception as? FirebaseFirestoreException)?.code
+            if (code == FirebaseFirestoreException.Code.UNAVAILABLE ||
+                code == FirebaseFirestoreException.Code.DEADLINE_EXCEEDED
+            ) {
+                // Queue the completion update offline so Firestore syncs it when connectivity returns.
+                journeyRef.update(completionUpdates)
+                    .addOnFailureListener { updateErr ->
+                        Log.w(TAG, "Queued arrival confirmation sync warning", updateErr)
+                    }
+                onComplete?.invoke(true)
+            } else {
+                Log.e(TAG, "Arrival confirmation could not be saved", exception)
+                synchronized(stateLock) {
+                    val latest = readState(context)
+                    if (latest?.token == token) {
+                        saveState(context, latest.copy(status = "cancelled", deadlineAt = 0L))
+                    }
+                }
+                onComplete?.invoke(false)
+            }
         }
     }
 
     fun extend(context: Context, uid: String, journeyId: String, token: String, minutes: Int, result: (Boolean) -> Unit) {
-        val state = readState(context)
-        if (state == null || state.uid != uid || state.journeyId != journeyId || state.token != token ||
-            state.status != "pending" || System.currentTimeMillis() >= state.deadlineAt || minutes <= 0) {
+        if (minutes <= 0) {
             result(false)
             return
         }
         val newExpectedAt = System.currentTimeMillis() + minutes * 60_000L
-        val journeyRef = FirebaseFirestore.getInstance().collection("users").document(uid)
-            .collection("journeys").document(journeyId)
-        journeyRef.update(mapOf(
-            "expectedArrival" to com.google.firebase.Timestamp(java.util.Date(newExpectedAt)),
-            "arrivalConfirmationStatus" to "extended",
-            "lastArrivalExtendedAt" to FieldValue.serverTimestamp()
-        )).addOnSuccessListener {
+        val extended: State = synchronized(stateLock) {
+            val state = readState(context)
+            if (state == null || state.uid != uid || state.journeyId != journeyId || state.token != token ||
+                state.status != "pending" || System.currentTimeMillis() >= state.deadlineAt
+            ) {
+                result(false)
+                return
+            }
             cancelAlarm(context, state, ACTION_TIMEOUT)
             ArrivalNotifications.cancel(context, token)
-            val extended = state.copy(expectedAt = newExpectedAt, token = UUID.randomUUID().toString(), status = "scheduled", deadlineAt = 0L)
-            saveState(context, extended)
-            schedule(context, extended, ACTION_ARRIVAL, newExpectedAt)
-            recordEvent(context, extended, "arrival_time_extended", "extended", "${extended.token}_extended", mapOf("extensionMinutes" to minutes))
-            updateJourneyArrivalFields(uid, journeyId, mapOf("arrivalConfirmationStatus" to "waiting"))
-            setRefreshPending(context, uid)
-            result(true)
+            val next = state.copy(
+                expectedAt = newExpectedAt,
+                token = UUID.randomUUID().toString(),
+                status = "scheduled",
+                deadlineAt = 0L
+            )
+            saveState(context, next)
+            schedule(context, next, ACTION_ARRIVAL, newExpectedAt)
+            next
+        }
+
+        recordEvent(
+            extended,
+            "arrival_time_extended",
+            "extended",
+            "${extended.token}_extended",
+            mapOf("extensionMinutes" to minutes)
+        )
+        setRefreshPending(context, uid)
+
+        val finished = AtomicBoolean(false)
+        val mainHandler = Handler(Looper.getMainLooper())
+        val offlineFallback = Runnable {
+            if (finished.compareAndSet(false, true)) {
+                result(true)
+            }
+        }
+        mainHandler.postDelayed(offlineFallback, 2500L)
+
+        val journeyRef = FirebaseFirestore.getInstance().collection("users").document(uid)
+            .collection("journeys").document(journeyId)
+        journeyRef.update(
+            mapOf(
+                "expectedArrival" to Timestamp(Date(newExpectedAt)),
+                "arrivalConfirmationStatus" to "extended",
+                "lastArrivalExtendedAt" to FieldValue.serverTimestamp()
+            )
+        ).addOnSuccessListener {
+            mainHandler.removeCallbacks(offlineFallback)
+            if (finished.compareAndSet(false, true)) {
+                result(true)
+            }
         }.addOnFailureListener { exception ->
+            mainHandler.removeCallbacks(offlineFallback)
             Log.e(TAG, "Arrival extension could not be saved", exception)
-            result(false)
+            val code = (exception as? FirebaseFirestoreException)?.code
+            if (code == FirebaseFirestoreException.Code.UNAVAILABLE ||
+                code == FirebaseFirestoreException.Code.DEADLINE_EXCEEDED
+            ) {
+                if (finished.compareAndSet(false, true)) result(true)
+            } else {
+                if (finished.compareAndSet(false, true)) result(false)
+            }
         }
     }
 
@@ -192,7 +348,6 @@ internal object ExpectedArrivalScheduler {
     }
 
     private fun recordEvent(
-        context: Context,
         state: State,
         eventType: String,
         responseStatus: String,
@@ -288,9 +443,19 @@ internal object ExpectedArrivalScheduler {
 }
 
 internal object ExpectedArrivalEvents {
-    private var listener: ((String, String) -> Unit)? = null
+    enum class EventType { PROMPT, MISSED, CONFIRMED }
 
-    fun register(callback: (String, String) -> Unit) {
+    data class Event(
+        val type: EventType,
+        val uid: String,
+        val journeyId: String,
+        val token: String
+    )
+
+    @Volatile
+    private var listener: ((Event) -> Unit)? = null
+
+    fun register(callback: (Event) -> Unit) {
         listener = callback
     }
 
@@ -298,7 +463,22 @@ internal object ExpectedArrivalEvents {
         listener = null
     }
 
-    fun dispatch(uid: String, journeyId: String) {
-        listener?.invoke(uid, journeyId)
+    fun hasVisibleListener(): Boolean = listener != null
+
+    fun dispatchPrompt(uid: String, journeyId: String, token: String): Boolean =
+        dispatch(Event(EventType.PROMPT, uid, journeyId, token))
+
+    fun dispatchMissed(uid: String, journeyId: String, token: String): Boolean =
+        dispatch(Event(EventType.MISSED, uid, journeyId, token))
+
+    fun dispatchConfirmed(uid: String, journeyId: String, token: String): Boolean =
+        dispatch(Event(EventType.CONFIRMED, uid, journeyId, token))
+
+    private fun dispatch(event: Event): Boolean {
+        val currentListener = listener ?: return false
+        Handler(Looper.getMainLooper()).post {
+            if (listener === currentListener) currentListener(event)
+        }
+        return true
     }
 }

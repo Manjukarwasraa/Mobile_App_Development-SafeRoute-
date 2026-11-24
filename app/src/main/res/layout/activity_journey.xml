@@ -357,6 +357,29 @@
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
+                                android:text="@string/journey_progress_arrival_label"
+                                android:textColor="@color/colorTextSecondary"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/tvJourneyArrivalCountdown"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/colorTextPrimary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvJourneyArrivalStatus"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginBottom="10dp"
+                                android:textColor="@color/colorTextSecondary"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
                                 android:text="@string/journey_progress_next_check_label"
                                 android:textColor="@color/colorTextSecondary"
                                 android:textSize="12sp" />

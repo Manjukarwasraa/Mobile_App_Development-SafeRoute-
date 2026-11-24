@@ -178,5 +178,12 @@ data class Journey(
     val completedAt: Timestamp? = null,
 
     /** Reminder interval selected for safety check-ins, in minutes. */
-    val safetyCheckIntervalMinutes: Int = 15
+    val safetyCheckIntervalMinutes: Int = 15,
+
+    /** Optional arrival-monitoring fields added when expected arrival is prompted, extended, confirmed, or missed. */
+    val arrivalConfirmationStatus: String = "",
+    val arrivalPromptedAt: Timestamp? = null,
+    val arrivalConfirmedAt: Timestamp? = null,
+    val arrivalMissedAt: Timestamp? = null,
+    val lastArrivalExtendedAt: Timestamp? = null
 )

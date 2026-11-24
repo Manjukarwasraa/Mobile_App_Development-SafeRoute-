@@ -1,4 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
+
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
@@ -8,10 +9,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
-    <!-- Required for SOS location sharing (Step 6) -->
-    <!-- COARSE: approximate location via WiFi/cell — no runtime prompt needed -->
+    <!-- Required for SOS location sharing -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- FINE: precise GPS location — runtime permission prompt shown to user -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
@@ -24,10 +23,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SafeRoute">
 
-        <!--
-            MainActivity: auth router — no UI, just redirects to Login or Dashboard.
-            This is the LAUNCHER activity (the one Android starts when the app icon is tapped).
-        -->
+        <!-- Main launcher activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -38,47 +34,74 @@
             </intent-filter>
         </activity>
 
-        <!-- Login screen -->
+        <!-- Login -->
         <activity
             android:name=".LoginActivity"
             android:exported="false"
             android:theme="@style/Theme.SafeRoute.Auth"
             android:windowSoftInputMode="adjustResize" />
 
-        <!-- Registration screen -->
+        <!-- Registration -->
         <activity
             android:name=".RegisterActivity"
             android:exported="false"
             android:theme="@style/Theme.SafeRoute.Auth"
             android:windowSoftInputMode="adjustResize" />
 
-        <!-- Dashboard (placeholder — Step 4 will flesh this out) -->
+        <!-- Dashboard -->
         <activity
             android:name=".DashboardActivity"
             android:exported="false"
             android:theme="@style/Theme.SafeRoute" />
 
-        <!-- Emergency Contacts screen -->
+        <!-- Emergency Contacts -->
         <activity
             android:name=".ContactsActivity"
             android:exported="false"
             android:theme="@style/Theme.SafeRoute"
             android:windowSoftInputMode="adjustResize" />
 
-        <!-- Journey setup screen -->
+        <!-- Journey setup -->
         <activity
             android:name=".JourneyActivity"
             android:exported="false"
             android:theme="@style/Theme.SafeRoute"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Existing safety reminder receiver -->
         <receiver
             android:name=".SafetyReminderReceiver"
             android:enabled="true"
             android:exported="false" />
 
+        <!-- Existing safety boot receiver -->
         <receiver
             android:name=".SafetyBootReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Expected arrival extension screen -->
+        <activity
+            android:name=".ArrivalExtensionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.SafeRoute"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Expected arrival alarm receiver -->
+        <receiver
+            android:name=".ExpectedArrivalReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <!-- Restore expected arrival monitoring after restart -->
+        <receiver
+            android:name=".ExpectedArrivalBootReceiver"
             android:enabled="true"
             android:exported="false">
             <intent-filter>
@@ -102,5 +125,4 @@
             android:windowSoftInputMode="adjustResize" />
 
     </application>
-
 </manifest>
